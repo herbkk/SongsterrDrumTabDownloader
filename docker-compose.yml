@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  songsterr-downloader:
+    build: .
+    container_name: songsterr-downloader
+    ports:
+      - "5000:5000"
+    volumes:
+      # Optional: Maps the downloads folder so PDFs are saved to your host filesystem
+      - ./downloads:/app/downloads
+    restart: unless-stopped

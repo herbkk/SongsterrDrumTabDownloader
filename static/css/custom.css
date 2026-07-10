@@ -1,0 +1,95 @@
+/* Custom CSS overrides and animations */
+
+/* Glassmorphism utility */
+.glass-card {
+    background: rgba(30, 41, 59, 0.7); /* slate-800 with opacity */
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Custom Scrollbar for search results */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(30, 41, 59, 0.5); 
+    border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.3); /* slate-400 */
+    border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(245, 158, 11, 0.5); /* amber-500 */
+}
+
+/* Make feather icons align properly with text */
+.feather {
+    display: inline-block;
+    vertical-align: text-bottom;
+}
+
+/* Search result item hover effect */
+.search-result-item {
+    transition: all 0.2s ease;
+}
+
+.search-result-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15);
+    border-color: rgba(245, 158, 11, 0.4); /* amber-500 */
+    background: rgba(30, 41, 59, 0.9);
+}
+
+/* Pulsing effect for progress bar container */
+.progress-pulse {
+    animation: glow-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes glow-pulse {
+    0%, 100% {
+        box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(245, 158, 11, 0.6);
+    }
+}
+
+/* Printing logic */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    
+    .print-wrapper, .print-wrapper * {
+        visibility: visible;
+    }
+    
+    .print-wrapper {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+
+    #osmd-container {
+        width: 100%;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    @page {
+        size: auto;
+        margin: 10mm;
+    }
+}
