@@ -23,6 +23,18 @@ window.osmdDarkBg = "#1c1d1f";
 window.osmdDarkStaff = "#6d6d6d";
 window.osmdDarkNote = "#cacaca";
 
+// Theme Configuration
+const THEMES = [
+    { id: 'turquoise-glow', name: 'Turquoise Glow', primary: '#06b6d4', secondary: '#8b5cf6' },
+    { id: 'amber-flame', name: 'Amber Flame', primary: '#f59e0b', secondary: '#ef4444' },
+    { id: 'ocean-blue', name: 'Ocean Blue', primary: '#3b82f6', secondary: '#06b6d4' },
+    { id: 'electric-purple', name: 'Electric Purple', primary: '#a855f7', secondary: '#ec4899' },
+    { id: 'emerald-night', name: 'Emerald Night', primary: '#10b981', secondary: '#14b8a6' },
+    { id: 'sunset-rose', name: 'Sunset Rose', primary: '#f43f5e', secondary: '#f97316' }
+];
+
+let currentTheme = localStorage.getItem('songsterr_theme') || 'turquoise-glow';
+
 // Search Elements
 const searchInput = document.getElementById('search-input');
 const searchResults = document.getElementById('search-results');
@@ -60,15 +72,16 @@ function updateFormatSelection(radio) {
 
     // Update styling for selected
     document.querySelectorAll('.format-option').forEach(el => {
-        el.classList.remove('border-brand-500', 'ring-1', 'ring-brand-500');
+        el.classList.remove('selected', 'border-white/10');
         el.classList.add('border-white/10');
-        el.querySelector('.check-icon').classList.replace('text-brand-500', 'text-transparent');
+        el.querySelector('.check-icon').classList.remove('text-accent');
+        el.querySelector('.check-icon').classList.add('text-transparent');
     });
 
     const parent = radio.closest('.format-option');
     parent.classList.remove('border-white/10');
-    parent.classList.add('border-brand-500', 'ring-1', 'ring-brand-500');
-    parent.querySelector('.check-icon').classList.replace('text-transparent', 'text-brand-500');
+    parent.classList.add('selected');
+    parent.querySelector('.check-icon').classList.replace('text-transparent', 'text-accent');
 
     updateBatchHelperText();
 }
@@ -120,11 +133,11 @@ function switchTab(tabName) {
     // Update tab styling
     Object.keys(tabs).forEach(key => {
         if (key === tabName) {
-            tabs[key].classList.add('border-brand-500', 'text-brand-400', 'bg-white/5');
-            tabs[key].classList.remove('border-transparent', 'text-slate-400');
+            tabs[key].classList.add('active');
+            tabs[key].classList.remove('text-slate-400');
         } else {
-            tabs[key].classList.remove('border-brand-500', 'text-brand-400', 'bg-white/5');
-            tabs[key].classList.add('border-transparent', 'text-slate-400');
+            tabs[key].classList.remove('active');
+            tabs[key].classList.add('text-slate-400');
         }
     });
 
@@ -148,6 +161,21 @@ function switchTab(tabName) {
         if (container.children.length === 0) {
             new VisualMapperCompact(container, globalDrumMapping);
         }
+        renderThemePicker();
+    }
+}
+
+function resetGlobalMapping() {
+    if (confirm("Reset all drum mappings to defaults? This will delete all custom overrides including the app theme.")) {
+        localStorage.removeItem('songsterr_mapping');
+        localStorage.removeItem('songsterr_theme');
+        globalDrumMapping = {};
+        const container = document.getElementById('global-mapping-container');
+        container.innerHTML = '';
+        new VisualMapperCompact(container, globalDrumMapping);
+        setTheme('turquoise-glow');
+        renderThemePicker();
+        showSuccessToast("Global mapping and theme reset");
     }
 }
 
@@ -160,9 +188,11 @@ searchInput.addEventListener('input', (e) => {
 
     if (query.length < 2) {
         searchResults.innerHTML = `
-            <div class="text-center py-8 text-slate-500 flex flex-col items-center">
-                <i data-feather="search" class="w-8 h-8 mb-3 opacity-50"></i>
-                <p>Type at least 2 characters to search</p>
+            <div class="empty-state">
+                <div class="empty-state-icon flex items-center justify-center">
+                    <i data-feather="search" class="w-5 h-5"></i>
+                </div>
+                <p class="empty-state-text">Type at least 2 characters to search</p>
             </div>
         `;
         feather.replace();
@@ -196,9 +226,11 @@ async function performSearch(query) {
 function renderSearchResults(results) {
     if (!results || results.length === 0) {
         searchResults.innerHTML = `
-            <div class="text-center py-8 text-slate-500 flex flex-col items-center">
-                <i data-feather="music" class="w-8 h-8 mb-3 opacity-50"></i>
-                <p>No drum tracks found for this query.</p>
+            <div class="empty-state">
+                <div class="empty-state-icon flex items-center justify-center">
+                    <i data-feather="music" class="w-5 h-5"></i>
+                </div>
+                <p class="empty-state-text">No drum tracks found for this query.</p>
             </div>
         `;
         feather.replace();
@@ -211,7 +243,7 @@ function renderSearchResults(results) {
         const diff = song.drumDifficulty || 1;
         let diffHtml = '';
         for (let i = 0; i < 3; i++) {
-            if (i < diff) diffHtml += `<i data-feather="star" class="w-3 h-3 text-amber-400 fill-amber-400 inline"></i>`;
+            if (i < diff) diffHtml += `<i data-feather="star" class="w-3 h-3 star-filled inline"></i>`;
             else diffHtml += `<i data-feather="star" class="w-3 h-3 text-slate-600 inline"></i>`;
         }
 
@@ -219,12 +251,12 @@ function renderSearchResults(results) {
             <div class="search-result-item bg-slate-800/60 border border-white/5 rounded-xl p-4 cursor-pointer flex justify-between items-center group" 
                  onclick="startDownloadFromSearch(${song.songId}, '${song.artist.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}')">
                 <div class="overflow-hidden pr-4">
-                    <h4 class="text-white font-medium truncate group-hover:text-brand-400 transition-colors">${song.title}</h4>
+                    <h4 class="text-white font-medium truncate group-hover:text-accent transition-colors">${song.title}</h4>
                     <p class="text-slate-400 text-sm truncate">${song.artist}</p>
                 </div>
                 <div class="flex flex-col items-end flex-shrink-0">
                     <div class="bg-slate-900/80 px-2 py-1 rounded text-xs text-slate-300 font-medium mb-1 border border-white/5">
-                        <i data-feather="box" class="w-3 h-3 inline mr-1 text-brand-500"></i>Drums
+                        <i data-feather="box" class="w-3 h-3 inline mr-1 text-accent"></i>Drums
                     </div>
                     <div class="text-xs" title="Difficulty">
                         ${diffHtml}
@@ -818,6 +850,10 @@ window.applyDefaultLightEngravingRules = function (osmd) {
             const storedDark = localStorage.getItem('osmd_dark_mode');
             window.osmdDarkModeGlobal = storedDark === 'true';
 
+            // Apply Theme
+            setTheme(currentTheme);
+            renderThemePicker();
+
             // Sync icon state immediately
             updateDarkModeIcon();
 
@@ -971,8 +1007,11 @@ function renderLibrary() {
 
     if (lib.length === 0) {
         container.innerHTML = `
-            <div class="text-center py-8 text-slate-500 text-sm">
-                No songs in your library yet. Download a tab to save it here!
+            <div class="empty-state">
+                <div class="empty-state-icon flex items-center justify-center">
+                    <i data-feather="music" class="w-5 h-5"></i>
+                </div>
+                <p class="empty-state-text">No songs in your library yet.<br>Download a tab to save it here!</p>
             </div>
         `;
         return;
@@ -1009,7 +1048,7 @@ function renderLibrary() {
                     </div>
                 </div>
                 <div class="flex items-center space-x-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                    <button onclick="startDownload({url: '${item.url}'})" class="p-2 text-brand-400 hover:text-brand-300 hover:bg-white/5 rounded-lg transition-colors" title="Re-open">
+                    <button onclick="startDownload({url: '${item.url}'})" class="p-2 text-accent hover:text-white hover:bg-white/5 rounded-lg transition-colors" title="Re-open">
                         <i data-feather="external-link" class="w-4 h-4"></i>
                     </button>
                     <button onclick="removeFromLibrary('${item.url}')" class="p-2 text-red-400 hover:text-red-300 hover:bg-white/5 rounded-lg transition-colors" title="Delete">
@@ -1021,4 +1060,39 @@ function renderLibrary() {
     }).join('');
 
     feather.replace();
+}
+
+// --- Theme Management ---
+
+function setTheme(themeId) {
+    const theme = THEMES.find(t => t.id === themeId);
+    if (!theme) return;
+
+    currentTheme = themeId;
+    document.documentElement.setAttribute('data-theme', themeId);
+    localStorage.setItem('songsterr_theme', themeId);
+
+    // Update the picker UI
+    document.querySelectorAll('.theme-card').forEach(card => {
+        if (card.dataset.themeId === themeId) {
+            card.classList.add('active');
+        } else {
+            card.classList.remove('active');
+        }
+    });
+}
+
+function renderThemePicker() {
+    const grid = document.getElementById('theme-grid');
+    if (!grid) return;
+
+    grid.innerHTML = THEMES.map(t => {
+        const isActive = t.id === currentTheme;
+        return `
+            <div class="theme-card ${isActive ? 'active' : ''}" data-theme-id="${t.id}" onclick="setTheme('${t.id}')">
+                <div class="theme-swatch" style="background: linear-gradient(135deg, ${t.primary}, ${t.secondary})"></div>
+                <div class="theme-card-name">${t.name}</div>
+            </div>
+        `;
+    }).join('');
 }

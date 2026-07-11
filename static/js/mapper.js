@@ -86,7 +86,7 @@ class VisualMapper {
             const heads = ['normal', 'x', 'circle-x', 'diamond', 'triangle'];
             let toolbarHtml = `<div class="flex space-x-2">`;
             heads.forEach(h => {
-                const active = (data.notehead || 'normal') === h ? 'bg-brand-500 border-brand-400' : 'bg-slate-800 border-white/10';
+                const active = (data.notehead || 'normal') === h ? 'bg-accent border-accent' : 'bg-slate-800 border-white/10';
                 toolbarHtml += `<button type="button" class="btn-notehead w-8 h-8 rounded border flex items-center justify-center text-white ${active}" data-head="${h}">
                     <svg viewBox="-8 -8 16 16" class="w-4 h-4">${getNoteheadSVG(h)}</svg>
                 </button>`;
@@ -105,12 +105,12 @@ class VisualMapper {
                         
                         <g class="ledger-lines" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"></g>
 
-                        <g class="draggable-note text-brand-400" transform="translate(50, ${y})">
+                        <g class="draggable-note text-accent" transform="translate(50, ${y})">
                             <line x1="4.5" y1="0" x2="4.5" y2="-25" stroke="currentColor" stroke-width="1.2" class="note-stem" />
                             <g class="note-head">${getNoteheadSVG(data.notehead || 'normal')}</g>
                         </g>
                     </svg>
-                    <div class="absolute bottom-2 right-2 text-xs text-brand-400 font-mono note-label">${data.step}${data.octave}</div>
+                    <div class="absolute bottom-2 right-2 text-xs text-accent font-mono note-label">${data.step}${data.octave}</div>
                 </div>
             `;
 
@@ -204,11 +204,11 @@ class VisualMapper {
         buttons.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 buttons.forEach(b => {
-                    b.classList.remove('bg-brand-500', 'border-brand-400');
+                    b.classList.remove('bg-accent', 'border-accent');
                     b.classList.add('bg-slate-800', 'border-white/10');
                 });
                 btn.classList.remove('bg-slate-800', 'border-white/10');
-                btn.classList.add('bg-brand-500', 'border-brand-400');
+                btn.classList.add('bg-accent', 'border-accent');
                 
                 const head = btn.dataset.head;
                 this.mapping[fret].notehead = head === 'normal' ? null : head;
@@ -339,7 +339,7 @@ class VisualMapperCompact {
                 <div class="flex space-x-1">`;
             
             heads.forEach(h => {
-                const active = (initialData.notehead || 'normal') === h ? 'bg-brand-500 border-brand-400' : 'border-transparent';
+                const active = (initialData.notehead || 'normal') === h ? 'bg-accent border-accent' : 'border-transparent';
                 toolbarHtml += `<button type="button" class="btn-notehead w-6 h-6 rounded border flex items-center justify-center text-white ${active} hover:bg-slate-700" data-head="${h}" title="${h}">
                     <svg viewBox="-8 -8 16 16" class="w-3 h-3">${getNoteheadSVG(h)}</svg>
                 </button>`;
@@ -360,7 +360,7 @@ class VisualMapperCompact {
                 const x = spacing * (i + 1);
                 const isSelected = fret === initialFret;
                 const opacity = isSelected ? '1' : '0.4';
-                const colorClass = isSelected ? 'text-brand-400' : 'text-slate-400';
+                const colorClass = isSelected ? 'text-accent' : 'text-slate-400';
                 
                 // Add ledger lines if needed
                 if (y <= 10) ledgersHtml += `<line x1="${x-8}" y1="10" x2="${x+8}" y2="10" data-fret="${fret}" opacity="${opacity}" class="ledger-line"/>`;
@@ -405,7 +405,7 @@ class VisualMapperCompact {
 
                         ${notesHtml}
                     </svg>
-                    <div class="absolute bottom-2 right-2 text-xs text-brand-400 font-mono note-label">${initialData.step}${initialData.octave}</div>
+                    <div class="absolute bottom-2 right-2 text-xs text-accent font-mono note-label">${initialData.step}${initialData.octave}</div>
                 </div>
             `;
 
@@ -440,10 +440,10 @@ class VisualMapperCompact {
             noteButtons.forEach(btn => {
                 const head = btn.dataset.head;
                 if ((data.notehead || 'normal') === head) {
-                    btn.classList.add('bg-brand-500', 'border-brand-400');
+                    btn.classList.add('bg-accent', 'border-accent');
                     btn.classList.remove('border-transparent', 'bg-slate-700');
                 } else {
-                    btn.classList.remove('bg-brand-500', 'border-brand-400');
+                    btn.classList.remove('bg-accent', 'border-accent');
                     btn.classList.add('border-transparent');
                 }
             });
@@ -453,10 +453,10 @@ class VisualMapperCompact {
                 if (n.dataset.fret === fret) {
                     n.style.opacity = '1';
                     n.classList.remove('text-slate-400');
-                    n.classList.add('text-brand-400');
+                    n.classList.add('text-accent');
                 } else {
                     n.style.opacity = '0.4';
-                    n.classList.remove('text-brand-400');
+                    n.classList.remove('text-accent');
                     n.classList.add('text-slate-400');
                 }
             });

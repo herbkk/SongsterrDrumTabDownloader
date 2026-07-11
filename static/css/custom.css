@@ -1,95 +1,535 @@
-/* Custom CSS overrides and animations */
+/* ==========================================================================
+   Songsterr Drum Tab Downloader — Design System
+   CSS Custom Properties + Theme Presets
+   ========================================================================== */
 
-/* Glassmorphism utility */
-.glass-card {
-    background: rgba(30, 41, 59, 0.7); /* slate-800 with opacity */
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+/* ─── Theme Definitions ──────────────────────────────────────────────────── */
+
+:root,
+[data-theme="turquoise-glow"] {
+  --accent-1: #06b6d4;
+  --accent-2: #8b5cf6;
+  --accent-1-rgb: 6, 182, 212;
+  --accent-2-rgb: 139, 92, 246;
+  --theme-name: 'Turquoise Glow';
 }
 
-/* Custom Scrollbar for search results */
+[data-theme="amber-flame"] {
+  --accent-1: #f59e0b;
+  --accent-2: #ef4444;
+  --accent-1-rgb: 245, 158, 11;
+  --accent-2-rgb: 239, 68, 68;
+}
+
+[data-theme="ocean-blue"] {
+  --accent-1: #3b82f6;
+  --accent-2: #06b6d4;
+  --accent-1-rgb: 59, 130, 246;
+  --accent-2-rgb: 6, 182, 212;
+}
+
+[data-theme="electric-purple"] {
+  --accent-1: #a855f7;
+  --accent-2: #ec4899;
+  --accent-1-rgb: 168, 85, 247;
+  --accent-2-rgb: 236, 72, 153;
+}
+
+[data-theme="emerald-night"] {
+  --accent-1: #10b981;
+  --accent-2: #14b8a6;
+  --accent-1-rgb: 16, 185, 129;
+  --accent-2-rgb: 20, 184, 166;
+}
+
+[data-theme="sunset-rose"] {
+  --accent-1: #f43f5e;
+  --accent-2: #f97316;
+  --accent-1-rgb: 244, 63, 94;
+  --accent-2-rgb: 249, 115, 22;
+}
+
+
+/* ─── Accent Utility Classes ─────────────────────────────────────────────── */
+
+/* Text */
+.text-accent      { color: var(--accent-1); }
+.text-accent-2    { color: var(--accent-2); }
+
+/* Backgrounds */
+.bg-accent        { background-color: var(--accent-1); }
+.bg-accent-2      { background-color: var(--accent-2); }
+
+/* Borders */
+.border-accent    { border-color: var(--accent-1); }
+.border-accent-2  { border-color: var(--accent-2); }
+
+/* Ring */
+.ring-accent      { --tw-ring-color: var(--accent-1); }
+
+/* Gradient text */
+.text-gradient {
+  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Gradient background */
+.bg-accent-gradient {
+  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+}
+
+/* Subtle glow backgrounds */
+.bg-accent-glow {
+  background-color: rgba(var(--accent-1-rgb), 0.15);
+}
+.bg-accent-glow-2 {
+  background-color: rgba(var(--accent-2-rgb), 0.10);
+}
+.border-accent-subtle {
+  border-color: rgba(var(--accent-1-rgb), 0.25);
+}
+.border-accent-subtle-2 {
+  border-color: rgba(var(--accent-1-rgb), 0.4);
+}
+
+/* Focus ring accent */
+.focus-accent:focus {
+  box-shadow: 0 0 0 2px rgba(var(--accent-1-rgb), 0.5);
+  border-color: var(--accent-1);
+}
+
+/* Selection color */
+::selection {
+  background: rgba(var(--accent-1-rgb), 0.3);
+  color: var(--accent-1);
+}
+
+
+/* ─── Toggles ────────────────────────────────────────────────────────────── */
+
+.peer:checked ~ .toggle-track {
+  background-color: var(--accent-1);
+  border-color: var(--accent-1);
+}
+
+/* ─── Glassmorphism ──────────────────────────────────────────────────────── */
+
+.glass-card {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Subtle animated gradient border */
+.glass-card::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(var(--accent-1-rgb), 0.15),
+    transparent 40%,
+    transparent 60%,
+    rgba(var(--accent-2-rgb), 0.1)
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+
+/* ─── Background Decoration ──────────────────────────────────────────────── */
+
+.bg-blob-primary {
+  background-color: rgba(var(--accent-1-rgb), 0.12);
+}
+
+.bg-blob-secondary {
+  background-color: rgba(var(--accent-2-rgb), 0.08);
+}
+
+
+/* ─── Custom Scrollbar ───────────────────────────────────────────────────── */
+
 .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
+  width: 6px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-    background: rgba(30, 41, 59, 0.5); 
-    border-radius: 4px;
+  background: rgba(30, 41, 59, 0.5);
+  border-radius: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.3); /* slate-400 */
-    border-radius: 4px;
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(245, 158, 11, 0.5); /* amber-500 */
+  background: rgba(var(--accent-1-rgb), 0.5);
 }
 
-/* Make feather icons align properly with text */
+
+/* ─── Feather Icons Alignment ────────────────────────────────────────────── */
+
 .feather {
-    display: inline-block;
-    vertical-align: text-bottom;
+  display: inline-block;
+  vertical-align: text-bottom;
 }
 
-/* Search result item hover effect */
+
+/* ─── Tab Bar ────────────────────────────────────────────────────────────── */
+
+.tab-btn {
+  position: relative;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.tab-btn::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%) scaleX(0);
+  width: 70%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+  border-radius: 2px;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tab-btn.active {
+  color: var(--accent-1);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.tab-btn.active::after {
+  transform: translateX(-50%) scaleX(1);
+}
+
+.tab-btn:not(.active):hover {
+  color: #e2e8f0;
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+
+/* ─── Search Result Items ────────────────────────────────────────────────── */
+
 .search-result-item {
-    transition: all 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .search-result-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15);
-    border-color: rgba(245, 158, 11, 0.4); /* amber-500 */
-    background: rgba(30, 41, 59, 0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15);
+  border-color: rgba(var(--accent-1-rgb), 0.4);
+  background: rgba(30, 41, 59, 0.9);
 }
 
-/* Pulsing effect for progress bar container */
+
+/* ─── Accent Buttons ─────────────────────────────────────────────────────── */
+
+.btn-accent {
+  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+  color: #fff;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-accent::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--accent-2), var(--accent-1));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.btn-accent:hover::before {
+  opacity: 1;
+}
+
+.btn-accent:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-accent:disabled::before {
+  display: none;
+}
+
+.btn-accent > * {
+  position: relative;
+  z-index: 1;
+}
+
+
+/* ─── Toggle Switches ────────────────────────────────────────────────────── */
+
+.toggle-track {
+  transition: background-color 0.2s ease;
+}
+
+.toggle-track.active {
+  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+}
+
+
+/* ─── Format Selection Cards ─────────────────────────────────────────────── */
+
+.format-option.selected {
+  border-color: var(--accent-1);
+  box-shadow: 0 0 0 1px var(--accent-1);
+}
+
+.format-option.selected .check-icon {
+  color: var(--accent-1);
+}
+
+
+/* ─── Progress Bar ───────────────────────────────────────────────────────── */
+
+.progress-bar-fill {
+  background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+}
+
 .progress-pulse {
-    animation: glow-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation: glow-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 @keyframes glow-pulse {
-    0%, 100% {
-        box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
-    }
-    50% {
-        box-shadow: 0 0 20px rgba(245, 158, 11, 0.6);
-    }
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(var(--accent-1-rgb), 0.2);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(var(--accent-1-rgb), 0.5);
+  }
 }
 
-/* Printing logic */
+
+/* ─── Theme Picker ───────────────────────────────────────────────────────── */
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.theme-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(15, 23, 42, 0.5);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.theme-card:hover {
+  background: rgba(30, 41, 59, 0.8);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.theme-card.active {
+  border-color: var(--accent-1);
+  box-shadow: 0 0 0 1px var(--accent-1), 0 0 12px rgba(var(--accent-1-rgb), 0.15);
+  background: rgba(var(--accent-1-rgb), 0.08);
+}
+
+.theme-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.theme-card-name {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #e2e8f0;
+  white-space: nowrap;
+}
+
+
+/* ─── Settings Sections ──────────────────────────────────────────────────── */
+
+.settings-section {
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+}
+
+.settings-section-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.settings-section-title .feather,
+.settings-section-title svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.7;
+}
+
+
+/* ─── Empty States ───────────────────────────────────────────────────────── */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 1rem;
+  color: #64748b;
+}
+
+.empty-state-icon {
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border-radius: 50%;
+  background: rgba(var(--accent-1-rgb), 0.08);
+  color: rgba(var(--accent-1-rgb), 0.5);
+}
+
+.empty-state-text {
+  font-size: 0.875rem;
+  text-align: center;
+  max-width: 280px;
+  line-height: 1.5;
+}
+
+
+/* ─── Sheet Music Toggle ─────────────────────────────────────────────────── */
+
+.osmd-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.5rem;
+  background: rgba(30, 41, 59, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.2s ease;
+}
+
+.osmd-toggle:hover {
+  background: rgba(30, 41, 59, 0.95);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.osmd-toggle-label {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+
+/* ─── Notehead Buttons (Mapper) ──────────────────────────────────────────── */
+
+.btn-notehead-active {
+  background: linear-gradient(135deg, var(--accent-1), var(--accent-2)) !important;
+  border-color: var(--accent-1) !important;
+}
+
+.note-color-accent {
+  color: var(--accent-1);
+}
+
+.note-color-muted {
+  color: #94a3b8;
+}
+
+
+/* ─── Legal Footer ───────────────────────────────────────────────────────── */
+
+.legal-footer {
+  font-size: 0.7rem;
+  color: #475569;
+  text-align: center;
+  padding: 1.5rem 0;
+  max-width: 480px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+.legal-footer strong {
+  color: #64748b;
+  font-weight: 500;
+}
+
+
+/* ─── Input Focus Accents ────────────────────────────────────────────────── */
+
+.input-themed:focus {
+  box-shadow: 0 0 0 2px rgba(var(--accent-1-rgb), 0.35);
+  border-color: rgba(var(--accent-1-rgb), 0.6);
+}
+
+
+/* ─── Star Ratings ───────────────────────────────────────────────────────── */
+
+.star-filled {
+  color: var(--accent-1);
+  fill: var(--accent-1);
+}
+
+
+/* ─── Printing Logic ─────────────────────────────────────────────────────── */
+
 @media print {
-    body * {
-        visibility: hidden;
-    }
-    
-    .print-wrapper, .print-wrapper * {
-        visibility: visible;
-    }
-    
-    .print-wrapper {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: auto !important;
-        max-height: none !important;
-        overflow: visible !important;
-        background: transparent !important;
-        box-shadow: none !important;
-    }
+  body * {
+    visibility: hidden;
+  }
 
-    #osmd-container {
-        width: 100%;
-        height: auto !important;
-        max-height: none !important;
-        overflow: visible !important;
-    }
+  .print-wrapper, .print-wrapper * {
+    visibility: visible;
+  }
 
-    @page {
-        size: auto;
-        margin: 10mm;
-    }
+  .print-wrapper {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  #osmd-container {
+    width: 100%;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  @page {
+    size: auto;
+    margin: 10mm;
+  }
 }
