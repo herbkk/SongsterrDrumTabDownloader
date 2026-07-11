@@ -2,11 +2,22 @@ version: '3.8'
 
 services:
   songsterr-downloader:
-    build: .
+    image: ghcr.io/ryoshoru/songsterrdrumtabdownloader:latest
     container_name: songsterr-downloader
     ports:
       - "5000:5000"
     volumes:
       # Optional: Maps the downloads folder so PDFs are saved to your host filesystem
       - ./downloads:/app/downloads
+    restart: unless-stopped
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # This allows watchtower to read your GHCR login credentials
+      - ~/.docker/config.json:/config.json:ro
+    # Checks for updates every 5 minutes (300 seconds) for this specific container
+    command: --interval 300 songsterr-downloader
     restart: unless-stopped
