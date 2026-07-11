@@ -197,7 +197,7 @@ def get_unmapped_frets(track_data: dict, custom_mapping: dict = None) -> list:
                     f = n.get("fret")
                     if f is not None and f not in combined_mapping:
                         if f not in unmapped:
-                            unmapped[f] = {"fret": f, "first_measure": mi + 1}
+                            unmapped[f] = {"fret": f, "first_measure": mi}
     return [unmapped[f] for f in sorted(unmapped.keys())]
 
 

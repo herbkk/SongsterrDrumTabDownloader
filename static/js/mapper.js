@@ -169,6 +169,7 @@ class VisualMapper {
                     osmd.EngravingRules.PageBottomMargin = 2.0;
                     osmd.EngravingRules.PageLeftMargin = 0.0;
                     osmd.EngravingRules.PageRightMargin = 0.0;
+                    osmd.EngravingRules.PercussionOneLineCutoff = 0;
 
                     if (window.osmdDarkModeGlobal && window.applyDarkThemeEngravingRules) {
                         window.applyDarkThemeEngravingRules(osmd);

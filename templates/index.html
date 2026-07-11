@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Songsterr Drum Tab Downloader</title>
+    <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
 
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -293,6 +294,10 @@
                         </h3>
                         <p class="text-sm text-slate-300">We found MIDI IDs that aren't in our standard mapping. Please
                             map them below so they appear correctly in your sheet music.</p>
+                        <div class="mt-3 bg-slate-800/50 rounded-lg p-3 border border-slate-700/50 text-xs text-slate-400 max-w-lg mx-auto text-left flex items-start">
+                            <i data-feather="info" class="w-4 h-4 mr-2 shrink-0 mt-0.5 text-brand-400"></i>
+                            <span><strong>Note:</strong> The staff line position of the red notes in the previews below is mathematically generated. Because the drum is unknown, its preview height will <strong>not match</strong> the original Songsterr layout. Use the preview purely to see the rhythmic timing.</span>
+                        </div>
                         <div id="mapping-song-url-container"
                             class="mt-2 text-xs text-brand-400 break-all max-w-lg mx-auto"></div>
                     </div>

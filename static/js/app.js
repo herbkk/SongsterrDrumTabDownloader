@@ -511,6 +511,7 @@ function createConfiguredOSMD(containerElement, isGhost = false) {
 
     osmd.EngravingRules.FlatBeams = true; // Hardcoded best for drums
     osmd.EngravingRules.RenderMeasureNumbers = drawMeasures;
+    osmd.EngravingRules.PercussionOneLineCutoff = 0;
     osmd.zoom = zoomVal;
 
     if (window.osmdDarkModeGlobal) {

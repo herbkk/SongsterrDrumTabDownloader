@@ -232,7 +232,7 @@ def _run_download_task(task_id: str, song_url: str, song_id: int, output_format:
         unmapped = get_unmapped_frets(track_data, custom_mapping=global_mapping)
         if unmapped:
             for u in unmapped:
-                preview_xml = generate_measure_preview_xml(track_data, u["first_measure"] - 1, highlight_fret=u["fret"])
+                preview_xml = generate_measure_preview_xml(track_data, u["first_measure"], highlight_fret=u["fret"])
                 u["preview_xml"] = preview_xml
 
             task["status"] = "requires_mapping"
