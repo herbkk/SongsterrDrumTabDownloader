@@ -97,13 +97,13 @@ class VisualMapper {
                 <div class="relative h-40 w-full bg-surface/50 rounded-lg overflow-hidden border border-subtle cursor-ns-resize select-none staff-container">
                     <svg width="100%" height="100%" viewBox="0 -10 100 100" preserveAspectRatio="xMidYMid meet">
                         <!-- Staff Lines (E4 to F5) -->
-                        <line x1="10" y1="20" x2="90" y2="20" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
-                        <line x1="10" y1="30" x2="90" y2="30" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
-                        <line x1="10" y1="40" x2="90" y2="40" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
-                        <line x1="10" y1="50" x2="90" y2="50" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
-                        <line x1="10" y1="60" x2="90" y2="60" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+                        <line x1="10" y1="20" x2="90" y2="20" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
+                        <line x1="10" y1="30" x2="90" y2="30" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
+                        <line x1="10" y1="40" x2="90" y2="40" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
+                        <line x1="10" y1="50" x2="90" y2="50" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
+                        <line x1="10" y1="60" x2="90" y2="60" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
                         
-                        <g class="ledger-lines" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"></g>
+                        <g class="ledger-lines" stroke="var(--text-muted)" opacity="0.8" stroke-width="1.5"></g>
 
                         <g class="draggable-note text-accent" transform="translate(50, ${y})">
                             <line x1="4.5" y1="0" x2="4.5" y2="-25" stroke="currentColor" stroke-width="1.2" class="note-stem" />
@@ -393,13 +393,13 @@ class VisualMapperCompact {
                 <div class="relative h-40 w-full bg-surface/50 rounded-lg overflow-hidden border border-subtle select-none staff-container" data-selected="${initialFret}">
                     <svg width="100%" height="100%" viewBox="0 -10 300 100" preserveAspectRatio="xMidYMid meet">
                         <!-- Staff Lines -->
-                        <line x1="5" y1="20" x2="295" y2="20" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
-                        <line x1="5" y1="30" x2="295" y2="30" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
-                        <line x1="5" y1="40" x2="295" y2="40" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
-                        <line x1="5" y1="50" x2="295" y2="50" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
-                        <line x1="5" y1="60" x2="295" y2="60" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+                        <line x1="5" y1="20" x2="295" y2="20" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
+                        <line x1="5" y1="30" x2="295" y2="30" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
+                        <line x1="5" y1="40" x2="295" y2="40" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
+                        <line x1="5" y1="50" x2="295" y2="50" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
+                        <line x1="5" y1="60" x2="295" y2="60" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
                         
-                        <g class="ledger-lines" stroke="rgba(255,255,255,0.5)" stroke-width="1.5">
+                        <g class="ledger-lines" stroke="var(--text-muted)" opacity="0.8" stroke-width="1.5">
                             ${ledgersHtml}
                         </g>
 
