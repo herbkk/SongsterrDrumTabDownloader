@@ -63,11 +63,11 @@ DRUM_MAPPING = {
 def get_fallback_drum(fret):
     """Dynamic fallback to avoid visual collisions of unmapped frets."""
     if fret is None:
-        return {"step": "B", "octave": 4}
+        return {"step": "B", "octave": 4, "is_fallback": True}
     steps = ["C", "D", "E", "F", "G", "A", "B"]
     step = steps[fret % 7]
     octave = 4 + (fret % 2)
-    return {"step": step, "octave": octave, "notehead": "diamond"}
+    return {"step": step, "octave": octave, "notehead": "diamond", "is_fallback": True}
 
 def duration_to_ticks(dur_array) -> int:
     """Convert [numerator, denominator] to MusicXML ticks (duration)."""
@@ -202,10 +202,11 @@ def get_unmapped_frets(track_data: dict, custom_mapping: dict = None) -> list:
 
 
 class MusicXMLGenerator:
-    def __init__(self, artist: str, title: str, custom_mapping: dict = None, bpm: int = None):
+    def __init__(self, artist: str, title: str, custom_mapping: dict = None, bpm: int = None, disable_fallback_colors: bool = False):
         self.artist = artist
         self.title = title
         self.bpm = bpm
+        self.disable_fallback_colors = disable_fallback_colors
         
         self.mapping = DRUM_MAPPING.copy()
         if custom_mapping:
@@ -446,6 +447,13 @@ class MusicXMLGenerator:
                         notehead_elem = ET.SubElement(note_elem, "notehead")
                         notehead_elem.text = "normal"
                     notehead_elem.set("color", "#EF4444")
+                elif mapping.get("is_fallback") and not self.disable_fallback_colors:
+                    note_elem.set("color", "#F59E0B")
+                    notehead_elem = note_elem.find("notehead")
+                    if notehead_elem is None:
+                        notehead_elem = ET.SubElement(note_elem, "notehead")
+                        notehead_elem.text = "normal"
+                    notehead_elem.set("color", "#F59E0B")
                     
                 # Articulations (ghost notes)
                 if n.get("ghost"):
@@ -467,7 +475,7 @@ def generate_musicxml(track_data: dict, output_path: str, artist: str = "Unknown
 
 def generate_measure_preview_xml(track_data: dict, measure_index: int, highlight_fret: int = None) -> str:
     """Generate a tiny MusicXML string for a few measures, for preview purposes."""
-    generator = MusicXMLGenerator("Preview", "Preview", None, None)
+    generator = MusicXMLGenerator("Preview", "Preview", None, None, disable_fallback_colors=True)
     
     measures = track_data.get("measures", [])
     start_idx = max(0, measure_index - 1)

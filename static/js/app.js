@@ -341,6 +341,12 @@ async function startDownload(payload, isBatchContinuation = false) {
         }
     }
 
+    const lib = getLibrary();
+    const existingItem = lib.find(i => i.url === currentDownloadUrl);
+    if (existingItem && existingItem.customMapping) {
+        Object.assign(payload.global_mapping, existingItem.customMapping);
+    }
+
     // Hide inputs, show progress
     panels.search.classList.add('hidden');
     panels.url.classList.add('hidden');
@@ -464,6 +470,7 @@ async function submitMapping() {
     if (!currentInterceptMapper) return;
 
     const customMapping = currentInterceptMapper.getMapping();
+    window.lastSubmittedCustomMapping = customMapping;
 
     panels.mapping.classList.add('hidden');
     panels.mapping.classList.remove('flex');
@@ -526,7 +533,8 @@ function createConfiguredOSMD(containerElement, isGhost = false) {
 async function showSuccess(result) {
     // Save to library history
     if (currentDownloadUrl) {
-        saveToLibrary(result.artist, result.title, currentDownloadUrl);
+        saveToLibrary(result.artist, result.title, currentDownloadUrl, window.lastSubmittedCustomMapping);
+        window.lastSubmittedCustomMapping = null;
     }
 
     if (isBatchProcessing) {
@@ -876,17 +884,30 @@ function getLibrary() {
     }
 }
 
-function saveToLibrary(artist, title, url) {
+function saveToLibrary(artist, title, url, customMapping = null) {
     let lib = getLibrary();
+    let existingItem = lib.find(item => item.url === url);
+    let mappingToSave = customMapping;
+
+    if (!mappingToSave && existingItem && existingItem.customMapping) {
+        mappingToSave = existingItem.customMapping;
+    }
+
     // Remove if exists to prepend it at the top
     lib = lib.filter(item => item.url !== url);
 
-    lib.unshift({
+    let newItem = {
         artist: artist || 'Unknown Artist',
         title: title || 'Unknown Title',
         url: url,
         date: new Date().toISOString()
-    });
+    };
+
+    if (mappingToSave && Object.keys(mappingToSave).length > 0) {
+        newItem.customMapping = mappingToSave;
+    }
+
+    lib.unshift(newItem);
 
     // Keep max 50 items
     if (lib.length > 50) lib.pop();
@@ -924,12 +945,23 @@ function renderLibrary() {
 
     container.innerHTML = lib.map(item => {
         const dateStr = new Date(item.date).toLocaleDateString();
+        let badgeHtml = '';
+        if (item.customMapping) {
+            const count = Object.keys(item.customMapping).length;
+            if (count > 0) {
+                badgeHtml = `<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center" title="${count} Custom Drum Mappings Saved"><i data-feather="settings" class="w-3 h-3 mr-1"></i>${count} Mappings</span>`;
+            }
+        }
+
         return `
             <div class="flex items-center justify-between p-4 bg-slate-900/50 border border-white/5 rounded-xl hover:bg-slate-800 transition-colors group">
                 <div class="flex-1 min-w-0 mr-4">
                     <h3 class="text-white font-medium truncate">${item.title}</h3>
                     <p class="text-slate-400 text-sm truncate">${item.artist}</p>
-                    <p class="text-slate-600 text-xs mt-1">Downloaded: ${dateStr}</p>
+                    <div class="flex items-center mt-1">
+                        <p class="text-slate-600 text-xs">Downloaded: ${dateStr}</p>
+                        ${badgeHtml}
+                    </div>
                 </div>
                 <div class="flex items-center space-x-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     <button onclick="startDownload({url: '${item.url}'})" class="p-2 text-brand-400 hover:text-brand-300 hover:bg-white/5 rounded-lg transition-colors" title="Re-open">
