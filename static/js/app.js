@@ -18,6 +18,10 @@ const panels = {
 // Global OSMD instance
 let osmdInstance = null;
 let currentDownloadUrl = null;
+window.osmdDarkModeGlobal = false;
+window.osmdDarkBg = "#1c1d1f";
+window.osmdDarkStaff = "#6d6d6d";
+window.osmdDarkNote = "#cacaca";
 
 // Search Elements
 const searchInput = document.getElementById('search-input');
@@ -41,6 +45,7 @@ let currentEventSource = null;
 let currentTaskId = null;
 let searchTimeout = null;
 let currentFormat = 'musicxml';
+let activeTab = 'search';
 
 // Batch Processing State
 let batchQueue = [];
@@ -263,7 +268,7 @@ document.getElementById('batch-input').addEventListener('input', validateUrlInpu
 
 function startDownloadFromSearch(songId, artist, title) {
     isBatchProcessing = false;
-    startDownload({ songId });
+    startDownload({ songId, artist, title });
 }
 
 function startDownloadFromUrl() {
@@ -327,7 +332,13 @@ async function startDownload(payload, isBatchContinuation = false) {
     if (payload.url) {
         currentDownloadUrl = payload.url;
     } else if (payload.songId) {
-        currentDownloadUrl = `https://www.songsterr.com/a/wsa/song-s${payload.songId}`;
+        if (payload.artist && payload.title) {
+            const safeArtist = payload.artist.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            const safeTitle = payload.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            currentDownloadUrl = `https://www.songsterr.com/a/wsa/${safeArtist}-${safeTitle}-drum-tab-s${payload.songId}`;
+        } else {
+            currentDownloadUrl = `https://www.songsterr.com/a/wsa/song-s${payload.songId}`;
+        }
     }
 
     // Hide inputs, show progress
@@ -390,7 +401,7 @@ function listenToProgress(taskId) {
             showSuccess(data.result);
         } else if (data.status === 'requires_mapping') {
             currentEventSource.close();
-            showMappingUI(data.unmapped_frets);
+            showMappingUI(data.unmapped_frets, data.song_url || currentDownloadUrl);
         } else if (data.status === 'error') {
             currentEventSource.close();
             showError(data.error || 'Download failed');
@@ -409,7 +420,12 @@ function listenToProgress(taskId) {
 
 let currentInterceptMapper = null;
 
-function showMappingUI(frets) {
+function showMappingUI(frets, songUrl) {
+    // Widen the main container to give the OSMD previews more room
+    const mainCard = document.querySelector('main.glass-card');
+    mainCard.classList.remove('max-w-3xl');
+    mainCard.classList.add('max-w-6xl');
+
     panels.progress.classList.add('hidden');
     panels.progress.classList.remove('flex');
     panels.progress.parentElement.classList.remove('progress-pulse');
@@ -417,15 +433,31 @@ function showMappingUI(frets) {
     panels.mapping.classList.remove('hidden');
     panels.mapping.classList.add('flex');
 
+    const urlContainer = document.getElementById('mapping-song-url-container');
+    if (urlContainer) {
+        if (songUrl) {
+            urlContainer.innerHTML = `Source: <a href="${songUrl}" target="_blank" class="hover:underline hover:text-brand-300 font-medium">View Original Score on Songsterr</a>`;
+        } else {
+            urlContainer.innerHTML = '';
+        }
+    }
+
     const container = document.getElementById('mapping-container');
 
     // Build initial mapping object for these unknown frets
     const initialMap = {};
-    frets.forEach(f => {
-        initialMap[f] = { name: `Drum ${f}`, step: 'C', octave: 5, notehead: 'normal' };
+    frets.forEach(f_obj => {
+        initialMap[f_obj.fret] = {
+            name: `Drum ${f_obj.fret}`,
+            step: 'C',
+            octave: 5,
+            notehead: 'normal',
+            first_measure: f_obj.first_measure,
+            preview_xml: f_obj.preview_xml
+        };
     });
 
-    currentInterceptMapper = new VisualMapper(container, initialMap, false);
+    currentInterceptMapper = new VisualMapper(container, initialMap, false, songUrl);
 }
 
 async function submitMapping() {
@@ -473,12 +505,17 @@ function createConfiguredOSMD(containerElement, isGhost = false) {
         drawSubtitle: drawTitle,
         drawComposer: drawTitle,
         pageFormat: pageFormat,
-        pageBackgroundColor: "#FFFFFF"
+        pageBackgroundColor: window.osmdDarkModeGlobal ? window.osmdDarkBg : "#FFFFFF",
+        darkMode: window.osmdDarkModeGlobal
     });
 
     osmd.EngravingRules.FlatBeams = true; // Hardcoded best for drums
     osmd.EngravingRules.RenderMeasureNumbers = drawMeasures;
     osmd.zoom = zoomVal;
+
+    if (window.osmdDarkModeGlobal) {
+        window.applyDarkThemeEngravingRules(osmd);
+    }
 
     return osmd;
 }
@@ -501,10 +538,10 @@ async function showSuccess(result) {
                 showError("Failed to render PDF for " + result.title);
             }
         }
-        
+
         batchQueueCompleted++;
         updateBatchProgressUI();
-        
+
         progressStep.innerText = 'Waiting before next request...';
         setTimeout(processNextBatchItem, 2500);
         return;
@@ -668,6 +705,135 @@ function resetUI() {
     // Default to active tab
     switchTab(activeTab);
 }
+
+// --- Settings & UI Global Actions ---
+
+function updateDarkModeIcon() {
+    const moon = document.getElementById('icon-moon');
+    const sun = document.getElementById('icon-sun');
+
+    if (moon && sun) {
+        if (window.osmdDarkModeGlobal) {
+            moon.classList.remove('hidden');
+            sun.classList.add('hidden');
+        } else {
+            moon.classList.add('hidden');
+            sun.classList.remove('hidden');
+        }
+    }
+}
+
+function updateDarkThemeColors() {
+    window.osmdDarkBg = document.getElementById('color-dark-bg').value;
+    window.osmdDarkStaff = document.getElementById('color-dark-staff').value;
+    window.osmdDarkNote = document.getElementById('color-dark-note').value;
+
+    document.getElementById('label-color-dark-bg').innerText = window.osmdDarkBg;
+    document.getElementById('label-color-dark-staff').innerText = window.osmdDarkStaff;
+    document.getElementById('label-color-dark-note').innerText = window.osmdDarkNote;
+
+    localStorage.setItem('osmd_dark_bg', window.osmdDarkBg);
+    localStorage.setItem('osmd_dark_staff', window.osmdDarkStaff);
+    localStorage.setItem('osmd_dark_note', window.osmdDarkNote);
+
+    if (window.osmdDarkModeGlobal) {
+        if (osmdInstance && !panels.result.classList.contains('hidden')) {
+            osmdInstance.setOptions({ pageBackgroundColor: window.osmdDarkBg });
+            window.applyDarkThemeEngravingRules(osmdInstance);
+            osmdInstance.render();
+        }
+        if (currentInterceptMapper && !panels.mapping.classList.contains('hidden')) {
+            currentInterceptMapper.updateDarkMode(true);
+        }
+    }
+}
+
+window.applyDarkThemeEngravingRules = function (osmd) {
+    osmd.EngravingRules.DefaultColorMusic = window.osmdDarkNote;
+    osmd.EngravingRules.DefaultColorRest = window.osmdDarkNote;
+    osmd.EngravingRules.StaffLineColor = window.osmdDarkStaff;
+    osmd.EngravingRules.ClefColor = window.osmdDarkStaff;
+    osmd.EngravingRules.TimeSignatureColor = window.osmdDarkStaff;
+    osmd.EngravingRules.KeySignatureColor = window.osmdDarkStaff;
+    osmd.EngravingRules.StemColor = window.osmdDarkNote;
+    osmd.EngravingRules.LedgerLineColor = window.osmdDarkStaff;
+    osmd.EngravingRules.TempoColor = window.osmdDarkStaff;
+    osmd.EngravingRules.MeasureNumberColor = window.osmdDarkStaff;
+    osmd.EngravingRules.RepeatBarlineColor = window.osmdDarkStaff;
+}
+
+function toggleOSMDDarkMode() {
+    window.osmdDarkModeGlobal = !window.osmdDarkModeGlobal;
+    localStorage.setItem('osmd_dark_mode', window.osmdDarkModeGlobal);
+
+    updateDarkModeIcon();
+
+    if (osmdInstance && !panels.result.classList.contains('hidden')) {
+        osmdInstance.setOptions({
+            darkMode: window.osmdDarkModeGlobal,
+            pageBackgroundColor: window.osmdDarkModeGlobal ? window.osmdDarkBg : "#FFFFFF"
+        });
+
+        if (window.osmdDarkModeGlobal) {
+            window.applyDarkThemeEngravingRules(osmdInstance);
+        } else {
+            // Unset or rely on OSMD's darkMode to reset colors? OSMD handles false partially, but we must clear our overrides
+            window.applyDefaultLightEngravingRules(osmdInstance);
+        }
+
+        osmdInstance.render();
+    }
+
+    if (currentInterceptMapper && !panels.mapping.classList.contains('hidden')) {
+        currentInterceptMapper.updateDarkMode(window.osmdDarkModeGlobal);
+    }
+}
+
+window.applyDefaultLightEngravingRules = function (osmd) {
+    osmd.EngravingRules.DefaultColorMusic = "#000000";
+    osmd.EngravingRules.DefaultColorRest = "#000000";
+    osmd.EngravingRules.StaffLineColor = "#000000";
+    osmd.EngravingRules.ClefColor = "#000000";
+    osmd.EngravingRules.TimeSignatureColor = "#000000";
+    osmd.EngravingRules.KeySignatureColor = "#000000";
+    osmd.EngravingRules.StemColor = "#000000";
+    osmd.EngravingRules.LedgerLineColor = "#000000";
+    osmd.EngravingRules.TempoColor = "#000000";
+    osmd.EngravingRules.MeasureNumberColor = "#000000";
+    osmd.EngravingRules.RepeatBarlineColor = "#000000";
+};
+
+    // Initialization
+    (async () => {
+        try {
+            const storedDark = localStorage.getItem('osmd_dark_mode');
+            window.osmdDarkModeGlobal = storedDark === 'true';
+
+            // Sync icon state immediately
+            updateDarkModeIcon();
+
+            window.osmdDarkBg = localStorage.getItem('osmd_dark_bg') || "#1e2022";
+            window.osmdDarkStaff = localStorage.getItem('osmd_dark_staff') || "#6b7280";
+            window.osmdDarkNote = localStorage.getItem('osmd_dark_note') || "#d4d4d8";
+
+            const bgInput = document.getElementById('color-dark-bg');
+            if (bgInput) {
+                if (/^#[0-9A-Fa-f]{6}$/.test(window.osmdDarkBg)) bgInput.value = window.osmdDarkBg;
+                document.getElementById('label-color-dark-bg').innerText = window.osmdDarkBg;
+            }
+            const staffInput = document.getElementById('color-dark-staff');
+            if (staffInput) {
+                if (/^#[0-9A-Fa-f]{6}$/.test(window.osmdDarkStaff)) staffInput.value = window.osmdDarkStaff;
+                document.getElementById('label-color-dark-staff').innerText = window.osmdDarkStaff;
+            }
+            const noteInput = document.getElementById('color-dark-note');
+            if (noteInput) {
+                if (/^#[0-9A-Fa-f]{6}$/.test(window.osmdDarkNote)) noteInput.value = window.osmdDarkNote;
+                document.getElementById('label-color-dark-note').innerText = window.osmdDarkNote;
+            }
+
+        } catch (e) { }
+    })();
 
 // --- Toast Notifications ---
 

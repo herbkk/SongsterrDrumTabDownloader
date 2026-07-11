@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 from xml.dom import minidom
 import os
 import logging
+import copy
 
 logger = logging.getLogger(__name__)
 
@@ -183,20 +184,21 @@ def apply_auto_beaming(measure_elem, divisions):
 
 def get_unmapped_frets(track_data: dict, custom_mapping: dict = None) -> list:
     """Scan track data for frets not present in DRUM_MAPPING or custom_mapping."""
-    used_frets = set()
+    unmapped = {}
     combined_mapping = DRUM_MAPPING.copy()
     if custom_mapping:
         # custom_mapping keys might be strings if coming from JSON
         combined_mapping.update({int(k): v for k, v in custom_mapping.items()})
         
-    for m in track_data.get("measures", []):
+    for mi, m in enumerate(track_data.get("measures", [])):
         for v in m.get("voices", []):
             for b in v.get("beats", []):
                 for n in b.get("notes", []):
                     f = n.get("fret")
                     if f is not None and f not in combined_mapping:
-                        used_frets.add(f)
-    return sorted(list(used_frets))
+                        if f not in unmapped:
+                            unmapped[f] = {"fret": f, "first_measure": mi + 1}
+    return [unmapped[f] for f in sorted(unmapped.keys())]
 
 
 class MusicXMLGenerator:
@@ -362,6 +364,9 @@ class MusicXMLGenerator:
         xml_str = ET.tostring(self.root, encoding="unicode")
         pretty_xml = minidom.parseString(xml_str).toprettyxml(indent="  ")
         
+        if output_path is None:
+            return pretty_xml
+        
         # Minidom adds an xml declaration, we just write it
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(pretty_xml)
@@ -433,6 +438,15 @@ class MusicXMLGenerator:
                 if "notehead" in mapping:
                     ET.SubElement(note_elem, "notehead").text = mapping["notehead"]
                     
+                # Color Highlight
+                if n.get("highlight"):
+                    note_elem.set("color", "#EF4444")
+                    notehead_elem = note_elem.find("notehead")
+                    if notehead_elem is None:
+                        notehead_elem = ET.SubElement(note_elem, "notehead")
+                        notehead_elem.text = "normal"
+                    notehead_elem.set("color", "#EF4444")
+                    
                 # Articulations (ghost notes)
                 if n.get("ghost"):
                     notehead_elem = note_elem.find("notehead")
@@ -446,6 +460,47 @@ class MusicXMLGenerator:
 
 def generate_musicxml(track_data: dict, output_path: str, artist: str = "Unknown", title: str = "Unknown", custom_mapping: dict = None, bpm: int = None) -> str:
     """Convenience function to generate MusicXML."""
-    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    if output_path is not None:
+        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
     generator = MusicXMLGenerator(artist, title, custom_mapping, bpm)
     return generator.generate(track_data, output_path)
+
+def generate_measure_preview_xml(track_data: dict, measure_index: int, highlight_fret: int = None) -> str:
+    """Generate a tiny MusicXML string for a few measures, for preview purposes."""
+    generator = MusicXMLGenerator("Preview", "Preview", None, None)
+    
+    measures = track_data.get("measures", [])
+    start_idx = max(0, measure_index - 1)
+    end_idx = min(len(measures), measure_index + 2)
+    
+    sig = [4, 4]
+    for mi, m in enumerate(measures):
+        if "signature" in m:
+            sig = m["signature"]
+        if mi == start_idx:
+            break
+            
+    target_measures = []
+    for i in range(start_idx, end_idx):
+        m_copy = copy.deepcopy(measures[i])
+        
+        if i == start_idx:
+            m_copy["signature"] = sig
+            
+        # Strip repeats or alternate endings to keep the preview simple
+        m_copy.pop("repeatStart", None)
+        m_copy.pop("repeat", None)
+        m_copy.pop("alternateEnding", None)
+        
+        if highlight_fret is not None and i == measure_index:
+            for v in m_copy.get("voices", []):
+                for b in v.get("beats", []):
+                    for n in b.get("notes", []):
+                        if n.get("fret") == highlight_fret:
+                            n["highlight"] = True
+                            
+        target_measures.append(m_copy)
+    
+    dummy_track = {"measures": target_measures}
+    
+    return generator.generate(dummy_track, None)

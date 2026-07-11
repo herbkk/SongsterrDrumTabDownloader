@@ -61,15 +61,18 @@ function getStemYOffset(type, direction) {
 // -----------------------------------------------------------------------------------------
 
 class VisualMapper {
-    constructor(containerElement, initialMapping, isGlobal = false) {
+    constructor(containerElement, initialMapping, isGlobal = false, songUrl = null) {
         this.container = containerElement;
         this.mapping = initialMapping; 
         this.isGlobal = isGlobal;
+        this.songUrl = songUrl;
+        this.osmdInstances = [];
         this.render();
     }
 
     render() {
         this.container.innerHTML = '';
+        this.osmdInstances = [];
         Object.keys(this.mapping).forEach(fret => {
             const data = this.mapping[fret];
             const y = getYForNote(data.step, data.octave);
@@ -91,7 +94,7 @@ class VisualMapper {
             toolbarHtml += `</div>`;
 
             const svgHtml = `
-                <div class="relative h-24 w-full bg-slate-800/50 rounded-lg overflow-hidden border border-white/5 cursor-ns-resize select-none staff-container">
+                <div class="relative h-40 w-full bg-slate-800/50 rounded-lg overflow-hidden border border-white/5 cursor-ns-resize select-none staff-container">
                     <svg width="100%" height="100%" viewBox="0 -10 100 100" preserveAspectRatio="xMidYMid meet">
                         <!-- Staff Lines (E4 to F5) -->
                         <line x1="10" y1="20" x2="90" y2="20" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
@@ -111,19 +114,87 @@ class VisualMapper {
                 </div>
             `;
 
+            let infoHtml = `
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center text-slate-300 font-medium text-sm">
+                        Drum ID: ${fret}
+                    </div>`;
+                    
+            if (data.first_measure) {
+                infoHtml += `
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs text-slate-400">First appears in Measure ${data.first_measure}</span>`;
+                infoHtml += `</div>`;
+            }
+            infoHtml += `</div>`;
+
+            let previewHtml = '';
+            if (data.preview_xml) {
+                previewHtml = `
+                    <div class="mt-4 border-t border-white/5 pt-4">
+                        <div class="text-xs text-slate-400 mb-2 font-medium">Context Preview (Measure ${data.first_measure}):</div>
+                        <div class="rounded-md overflow-hidden border border-slate-700 bg-transparent" id="preview-osmd-${fret}"></div>
+                    </div>
+                `;
+            }
+
             wrapper.innerHTML = `
-                <div class="flex items-center text-slate-300 font-medium text-sm mb-1">
-                    <div class="w-6 h-6 rounded bg-slate-800 flex items-center justify-center mr-2 border border-white/10 text-xs">${fret}</div>
-                    Drum ID: ${fret}
-                </div>
+                ${infoHtml}
                 ${nameInput}
                 ${toolbarHtml}
                 ${svgHtml}
+                ${previewHtml}
             `;
             
             this.container.appendChild(wrapper);
             this.attachEvents(wrapper, fret);
             this.updateLedgerLines(wrapper, y);
+
+            if (data.preview_xml) {
+                const previewContainer = wrapper.querySelector(`#preview-osmd-${fret}`);
+                if (previewContainer && window.opensheetmusicdisplay) {
+                    const osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(previewContainer, {
+                        backend: "svg",
+                        drawTitle: false,
+                        drawSubtitle: false,
+                        drawComposer: false,
+                        drawPartNames: false,
+                        drawMeasureNumbers: false,
+                        autoResize: true,
+                        darkMode: window.osmdDarkModeGlobal || false,
+                        pageBackgroundColor: window.osmdDarkModeGlobal ? window.osmdDarkBg : "#FFFFFF"
+                    });
+                    osmd.EngravingRules.RenderMeasureNumbers = false;
+                    osmd.EngravingRules.PageTopMargin = 2.0;
+                    osmd.EngravingRules.PageBottomMargin = 2.0;
+                    osmd.EngravingRules.PageLeftMargin = 0.0;
+                    osmd.EngravingRules.PageRightMargin = 0.0;
+
+                    if (window.osmdDarkModeGlobal && window.applyDarkThemeEngravingRules) {
+                        window.applyDarkThemeEngravingRules(osmd);
+                    }
+                    osmd.load(data.preview_xml).then(() => {
+                        osmd.zoom = 1.0; 
+                        osmd.render();
+                    }).catch(err => console.error("OSMD Preview Error:", err));
+                    this.osmdInstances.push(osmd);
+                }
+            }
+        });
+    }
+
+    updateDarkMode(isDark) {
+        this.osmdInstances.forEach(osmd => {
+            osmd.setOptions({
+                darkMode: isDark,
+                pageBackgroundColor: isDark ? window.osmdDarkBg : "#FFFFFF"
+            });
+            if (isDark && window.applyDarkThemeEngravingRules) {
+                window.applyDarkThemeEngravingRules(osmd);
+            } else if (!isDark && window.applyDefaultLightEngravingRules) {
+                window.applyDefaultLightEngravingRules(osmd);
+            }
+            osmd.render();
         });
     }
 

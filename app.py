@@ -15,7 +15,7 @@ from flask import Flask, render_template, request, jsonify, send_from_directory,
 
 from downloader.api import search_songs
 from downloader.scraper import download_drum_track
-from downloader.xml_generator import generate_musicxml, get_unmapped_frets, DRUM_MAPPING
+from downloader.xml_generator import generate_musicxml, get_unmapped_frets, DRUM_MAPPING, generate_measure_preview_xml
 
 # ─── Configuration ──────────────────────────────────────────────────────────────
 
@@ -99,6 +99,7 @@ def api_download():
         "step": "Queued...",
         "result": None,
         "error": None,
+        "song_url": song_url, # store for later
     }
 
     # Run download in background thread
@@ -172,6 +173,7 @@ def api_status(task_id):
                 break
             elif task["status"] == "requires_mapping":
                 event["unmapped_frets"] = task["unmapped_frets"]
+                event["song_url"] = task.get("song_url")
                 yield f"data: {json.dumps(event)}\n\n"
                 break
             else:
@@ -229,6 +231,10 @@ def _run_download_task(task_id: str, song_url: str, song_id: int, output_format:
         # Check for unmapped frets using both default and global mapping
         unmapped = get_unmapped_frets(track_data, custom_mapping=global_mapping)
         if unmapped:
+            for u in unmapped:
+                preview_xml = generate_measure_preview_xml(track_data, u["first_measure"] - 1, highlight_fret=u["fret"])
+                u["preview_xml"] = preview_xml
+
             task["status"] = "requires_mapping"
             task["unmapped_frets"] = unmapped
             task["track_data"] = track_data
@@ -237,6 +243,7 @@ def _run_download_task(task_id: str, song_url: str, song_id: int, output_format:
             task["output_format"] = output_format
             task["global_mapping"] = global_mapping
             task["bpm"] = bpm
+            task["song_url"] = song_url
             return
 
         # No unmapped frets, proceed directly to generation
