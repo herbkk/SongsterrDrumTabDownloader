@@ -6,6 +6,22 @@
 /* ─── Theme Definitions ──────────────────────────────────────────────────── */
 
 /* --- Base Themes --- */
+:root {
+  --bg-body: #f1f5f9;          /* slate-100 */
+  --bg-surface: #ffffff;       /* white */
+  --bg-surface-hover: #e2e8f0; /* slate-200 */
+  --text-primary: #0f172a;     /* slate-900 */
+  --text-secondary: #475569;   /* slate-600 */
+  --text-muted: #94a3b8;       /* slate-400 */
+  --border-base: rgba(0, 0, 0, 0.15);
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --bg-surface-glass: rgba(255, 255, 255, 0.7);
+  --scrollbar-track: rgba(226, 232, 240, 0.8);
+  --scrollbar-thumb: rgba(148, 163, 184, 0.6);
+  
+  --bg-input: #ffffff;
+}
+
 [data-base-theme="classic-dark"] {
   --bg-body: #020617;          /* slate-950 */
   --bg-surface: #0f172a;       /* slate-900 */
@@ -23,7 +39,6 @@
   --bg-input: rgba(15, 23, 42, 0.8);
 }
 
-:root,
 [data-base-theme="clean-light"] {
   --bg-body: #f1f5f9;          /* slate-100 */
   --bg-surface: #ffffff;       /* white */
