@@ -873,6 +873,41 @@ function hideToast(toastId = 'toast') {
     document.getElementById(toastId).classList.add('translate-y-full', 'opacity-0');
 }
 
+// --- Album Art ---
+
+async function fetchAlbumCover(artist, title) {
+    try {
+        const query = encodeURIComponent(`${artist} ${title}`);
+        const url = `https://itunes.apple.com/search?term=${query}&entity=song&limit=1`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.results && data.results.length > 0) {
+            let artwork = data.results[0].artworkUrl100;
+            return artwork.replace('100x100bb', '400x400bb');
+        }
+    } catch (err) {
+        console.error("Cover fetch error:", err);
+    }
+    return null;
+}
+
+async function ensureAlbumCover(url, artist, title) {
+    let lib = getLibrary();
+    let itemIndex = lib.findIndex(i => i.url === url);
+    if (itemIndex > -1 && !lib[itemIndex].coverUrl) {
+        const cover = await fetchAlbumCover(artist, title);
+        if (cover) {
+            let freshLib = getLibrary();
+            let freshIndex = freshLib.findIndex(i => i.url === url);
+            if (freshIndex > -1) {
+                freshLib[freshIndex].coverUrl = cover;
+                localStorage.setItem('songsterr_library', JSON.stringify(freshLib));
+                if (activeTab === 'library') renderLibrary();
+            }
+        }
+    }
+}
+
 // --- Library / History Management ---
 
 function getLibrary() {
@@ -944,6 +979,11 @@ function renderLibrary() {
     }
 
     container.innerHTML = lib.map(item => {
+        if (!item.coverUrl && !item.coverFetchAttempted) {
+            item.coverFetchAttempted = true; // temporary session flag
+            ensureAlbumCover(item.url, item.artist, item.title);
+        }
+
         const dateStr = new Date(item.date).toLocaleDateString();
         let badgeHtml = '';
         if (item.customMapping) {
@@ -953,8 +993,13 @@ function renderLibrary() {
             }
         }
 
+        const coverHtml = item.coverUrl 
+            ? `<img src="${item.coverUrl}" alt="Cover" class="w-16 h-16 rounded-md object-cover mr-4 border border-white/10 shadow-lg shrink-0">`
+            : `<div class="w-16 h-16 rounded-md bg-slate-800 border border-white/10 mr-4 flex items-center justify-center shrink-0 shadow-inner"><i data-feather="music" class="w-6 h-6 text-slate-500"></i></div>`;
+
         return `
             <div class="flex items-center justify-between p-4 bg-slate-900/50 border border-white/5 rounded-xl hover:bg-slate-800 transition-colors group">
+                ${coverHtml}
                 <div class="flex-1 min-w-0 mr-4">
                     <h3 class="text-white font-medium truncate">${item.title}</h3>
                     <p class="text-slate-400 text-sm truncate">${item.artist}</p>
