@@ -24,6 +24,13 @@ window.osmdDarkStaff = "#6d6d6d";
 window.osmdDarkNote = "#cacaca";
 
 // Theme Configuration
+const BASE_THEMES = [
+    { id: 'classic-dark', name: 'Classic Dark', primary: '#0f172a', secondary: '#1e293b' },
+    { id: 'clean-light', name: 'Clean Light', primary: '#f8fafc', secondary: '#ffffff' },
+    { id: 'nord', name: 'Nord', primary: '#2e3440', secondary: '#3b4252' },
+    { id: 'dracula', name: 'Dracula', primary: '#282a36', secondary: '#44475a' }
+];
+
 const THEMES = [
     { id: 'turquoise-glow', name: 'Turquoise Glow', primary: '#06b6d4', secondary: '#8b5cf6' },
     { id: 'amber-flame', name: 'Amber Flame', primary: '#f59e0b', secondary: '#ef4444' },
@@ -33,6 +40,7 @@ const THEMES = [
     { id: 'sunset-rose', name: 'Sunset Rose', primary: '#f43f5e', secondary: '#f97316' }
 ];
 
+let currentBaseTheme = localStorage.getItem('songsterr_base_theme') || 'clean-light';
 let currentTheme = localStorage.getItem('songsterr_theme') || 'turquoise-glow';
 
 // Search Elements
@@ -72,14 +80,14 @@ function updateFormatSelection(radio) {
 
     // Update styling for selected
     document.querySelectorAll('.format-option').forEach(el => {
-        el.classList.remove('selected', 'border-white/10');
-        el.classList.add('border-white/10');
+        el.classList.remove('selected', 'border-base');
+        el.classList.add('border-base');
         el.querySelector('.check-icon').classList.remove('text-accent');
         el.querySelector('.check-icon').classList.add('text-transparent');
     });
 
     const parent = radio.closest('.format-option');
-    parent.classList.remove('border-white/10');
+    parent.classList.remove('border-base');
     parent.classList.add('selected');
     parent.querySelector('.check-icon').classList.replace('text-transparent', 'text-accent');
 
@@ -114,7 +122,7 @@ function updateBatchHelperText() {
         helper.innerHTML = '<p>Must be a valid Songsterr song URL.</p>';
     } else {
         if (currentFormat === 'musicxml') {
-            helper.innerHTML = `<p>All downloaded <code class="text-slate-400 font-mono">.musicxml</code> files are automatically saved to your server's local <code class="text-slate-400 font-mono">downloads/</code> folder.</p>
+            helper.innerHTML = `<p>All downloaded <code class="text-secondary font-mono">.musicxml</code> files are automatically saved to your server's local <code class="text-secondary font-mono">downloads/</code> folder.</p>
                                 <p>Batch downloads will process sequentially and appear in your Library when finished.</p>`;
         } else {
             helper.innerHTML = `<p>The browser will sequentially generate and save PDF files.</p>
@@ -134,10 +142,10 @@ function switchTab(tabName) {
     Object.keys(tabs).forEach(key => {
         if (key === tabName) {
             tabs[key].classList.add('active');
-            tabs[key].classList.remove('text-slate-400');
+            tabs[key].classList.remove('text-secondary');
         } else {
             tabs[key].classList.remove('active');
-            tabs[key].classList.add('text-slate-400');
+            tabs[key].classList.add('text-secondary');
         }
     });
 
@@ -169,12 +177,27 @@ function resetGlobalMapping() {
     if (confirm("Reset all drum mappings to defaults? This will delete all custom overrides including the app theme.")) {
         localStorage.removeItem('songsterr_mapping');
         localStorage.removeItem('songsterr_theme');
+        localStorage.removeItem('songsterr_base_theme');
+        localStorage.removeItem('style_page_format');
+        localStorage.removeItem('style_draw_title');
+        localStorage.removeItem('style_draw_measures');
+        localStorage.removeItem('style_zoom');
         globalDrumMapping = {};
         const container = document.getElementById('global-mapping-container');
         container.innerHTML = '';
         new VisualMapperCompact(container, globalDrumMapping);
         setTheme('turquoise-glow');
+        setBaseTheme('clean-light');
+
+        // Reset DOM elements for PDF Settings
+        document.getElementById('style-page-format').value = 'A4_P';
+        document.getElementById('style-draw-title').checked = true;
+        document.getElementById('style-draw-measures').checked = true;
+        document.getElementById('style-zoom').value = '0.6';
+        document.getElementById('style-zoom-val').innerText = '0.6';
+
         renderThemePicker();
+        renderBaseThemePicker();
         showSuccessToast("Global mapping and theme reset");
     }
 }
@@ -244,18 +267,18 @@ function renderSearchResults(results) {
         let diffHtml = '';
         for (let i = 0; i < 3; i++) {
             if (i < diff) diffHtml += `<i data-feather="star" class="w-3 h-3 star-filled inline"></i>`;
-            else diffHtml += `<i data-feather="star" class="w-3 h-3 text-slate-600 inline"></i>`;
+            else diffHtml += `<i data-feather="star" class="w-3 h-3 text-muted inline"></i>`;
         }
 
         html += `
-            <div class="search-result-item bg-slate-800/60 border border-white/5 rounded-xl p-4 cursor-pointer flex justify-between items-center group" 
+            <div class="search-result-item bg-surface border border-subtle rounded-xl p-4 cursor-pointer flex justify-between items-center group" 
                  onclick="startDownloadFromSearch(${song.songId}, '${song.artist.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}')">
                 <div class="overflow-hidden pr-4">
-                    <h4 class="text-white font-medium truncate group-hover:text-accent transition-colors">${song.title}</h4>
-                    <p class="text-slate-400 text-sm truncate">${song.artist}</p>
+                    <h4 class="text-primary font-medium truncate group-hover:text-accent transition-colors">${song.title}</h4>
+                    <p class="text-secondary text-sm truncate">${song.artist}</p>
                 </div>
                 <div class="flex flex-col items-end flex-shrink-0">
-                    <div class="bg-slate-900/80 px-2 py-1 rounded text-xs text-slate-300 font-medium mb-1 border border-white/5">
+                    <div class="bg-surface px-2 py-1 rounded text-xs text-secondary font-medium mb-1 border border-subtle">
                         <i data-feather="box" class="w-3 h-3 inline mr-1 text-accent"></i>Drums
                     </div>
                     <div class="text-xs" title="Difficulty">
@@ -844,41 +867,65 @@ window.applyDefaultLightEngravingRules = function (osmd) {
     osmd.EngravingRules.RepeatBarlineColor = "#000000";
 };
 
-    // Initialization
-    (async () => {
-        try {
-            const storedDark = localStorage.getItem('osmd_dark_mode');
-            window.osmdDarkModeGlobal = storedDark === 'true';
+// Initialization
+(async () => {
+    try {
+        const storedDark = localStorage.getItem('osmd_dark_mode');
+        window.osmdDarkModeGlobal = storedDark === 'true';
 
-            // Apply Theme
-            setTheme(currentTheme);
-            renderThemePicker();
+        // Apply Theme
+        setBaseTheme(currentBaseTheme);
+        setTheme(currentTheme);
+        renderBaseThemePicker();
+        renderThemePicker();
 
-            // Sync icon state immediately
-            updateDarkModeIcon();
+        // Sync icon state immediately
+        updateDarkModeIcon();
 
-            window.osmdDarkBg = localStorage.getItem('osmd_dark_bg') || "#1e2022";
-            window.osmdDarkStaff = localStorage.getItem('osmd_dark_staff') || "#6b7280";
-            window.osmdDarkNote = localStorage.getItem('osmd_dark_note') || "#d4d4d8";
+        window.osmdDarkBg = localStorage.getItem('osmd_dark_bg') || "#1e2022";
+        window.osmdDarkStaff = localStorage.getItem('osmd_dark_staff') || "#6b7280";
+        window.osmdDarkNote = localStorage.getItem('osmd_dark_note') || "#d4d4d8";
 
-            const bgInput = document.getElementById('color-dark-bg');
-            if (bgInput) {
-                if (/^#[0-9A-Fa-f]{6}$/.test(window.osmdDarkBg)) bgInput.value = window.osmdDarkBg;
-                document.getElementById('label-color-dark-bg').innerText = window.osmdDarkBg;
-            }
-            const staffInput = document.getElementById('color-dark-staff');
-            if (staffInput) {
-                if (/^#[0-9A-Fa-f]{6}$/.test(window.osmdDarkStaff)) staffInput.value = window.osmdDarkStaff;
-                document.getElementById('label-color-dark-staff').innerText = window.osmdDarkStaff;
-            }
-            const noteInput = document.getElementById('color-dark-note');
-            if (noteInput) {
-                if (/^#[0-9A-Fa-f]{6}$/.test(window.osmdDarkNote)) noteInput.value = window.osmdDarkNote;
-                document.getElementById('label-color-dark-note').innerText = window.osmdDarkNote;
-            }
+        const bgInput = document.getElementById('color-dark-bg');
+        if (bgInput) {
+            if (/^#[0-9A-Fa-f]{6}$/.test(window.osmdDarkBg)) bgInput.value = window.osmdDarkBg;
+            document.getElementById('label-color-dark-bg').innerText = window.osmdDarkBg;
+        }
+        const staffInput = document.getElementById('color-dark-staff');
+        if (staffInput) {
+            if (/^#[0-9A-Fa-f]{6}$/.test(window.osmdDarkStaff)) staffInput.value = window.osmdDarkStaff;
+            document.getElementById('label-color-dark-staff').innerText = window.osmdDarkStaff;
+        }
+        const noteInput = document.getElementById('color-dark-note');
+        if (noteInput) {
+            if (/^#[0-9A-Fa-f]{6}$/.test(window.osmdDarkNote)) noteInput.value = window.osmdDarkNote;
+            document.getElementById('label-color-dark-note').innerText = window.osmdDarkNote;
+        }
 
-        } catch (e) { }
-    })();
+        // Restore PDF Settings
+        const savedFormat = localStorage.getItem('style_page_format');
+        if (savedFormat) document.getElementById('style-page-format').value = savedFormat;
+
+        const savedTitle = localStorage.getItem('style_draw_title');
+        if (savedTitle !== null) document.getElementById('style-draw-title').checked = savedTitle === 'true';
+
+        const savedMeasures = localStorage.getItem('style_draw_measures');
+        if (savedMeasures !== null) document.getElementById('style-draw-measures').checked = savedMeasures === 'true';
+
+        const savedZoom = localStorage.getItem('style_zoom');
+        if (savedZoom !== null) {
+            document.getElementById('style-zoom').value = savedZoom;
+            document.getElementById('style-zoom-val').innerText = savedZoom;
+        }
+
+        // Attach event listeners for PDF settings to persist them
+        document.getElementById('style-page-format')?.addEventListener('change', (e) => localStorage.setItem('style_page_format', e.target.value));
+        document.getElementById('style-draw-title')?.addEventListener('change', (e) => localStorage.setItem('style_draw_title', e.target.checked));
+        document.getElementById('style-draw-measures')?.addEventListener('change', (e) => localStorage.setItem('style_draw_measures', e.target.checked));
+        document.getElementById('style-zoom')?.addEventListener('change', (e) => localStorage.setItem('style_zoom', e.target.value));
+
+    } catch (e) { console.error('Error loading settings', e); }
+})();
 
 // --- Toast Notifications ---
 
@@ -1032,23 +1079,23 @@ function renderLibrary() {
             }
         }
 
-        const coverHtml = item.coverUrl 
-            ? `<img src="${item.coverUrl}" alt="Cover" class="w-16 h-16 rounded-md object-cover mr-4 border border-white/10 shadow-lg shrink-0">`
-            : `<div class="w-16 h-16 rounded-md bg-slate-800 border border-white/10 mr-4 flex items-center justify-center shrink-0 shadow-inner"><i data-feather="music" class="w-6 h-6 text-slate-500"></i></div>`;
+        const coverHtml = item.coverUrl
+            ? `<img src="${item.coverUrl}" alt="Cover" class="w-16 h-16 rounded-md object-cover mr-4 border border-base shadow-lg shrink-0">`
+            : `<div class="w-16 h-16 rounded-md bg-surface border border-base mr-4 flex items-center justify-center shrink-0 shadow-inner"><i data-feather="music" class="w-6 h-6 text-muted"></i></div>`;
 
         return `
-            <div class="flex items-center justify-between p-4 bg-slate-900/50 border border-white/5 rounded-xl hover:bg-slate-800 transition-colors group">
+            <div class="flex items-center justify-between p-4 bg-input border border-subtle rounded-xl hover:bg-surface transition-colors group">
                 ${coverHtml}
                 <div class="flex-1 min-w-0 mr-4">
-                    <h3 class="text-white font-medium truncate">${item.title}</h3>
-                    <p class="text-slate-400 text-sm truncate">${item.artist}</p>
+                    <h3 class="text-primary font-medium truncate">${item.title}</h3>
+                    <p class="text-secondary text-sm truncate">${item.artist}</p>
                     <div class="flex items-center mt-1">
-                        <p class="text-slate-600 text-xs">Downloaded: ${dateStr}</p>
+                        <p class="text-muted text-xs">Downloaded: ${dateStr}</p>
                         ${badgeHtml}
                     </div>
                 </div>
                 <div class="flex items-center space-x-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                    <button onclick="startDownload({url: '${item.url}'})" class="p-2 text-accent hover:text-white hover:bg-white/5 rounded-lg transition-colors" title="Re-open">
+                    <button onclick="startDownload({url: '${item.url}'})" class="p-2 text-accent hover:text-primary hover:bg-white/5 rounded-lg transition-colors" title="Re-open">
                         <i data-feather="external-link" class="w-4 h-4"></i>
                     </button>
                     <button onclick="removeFromLibrary('${item.url}')" class="p-2 text-red-400 hover:text-red-300 hover:bg-white/5 rounded-lg transition-colors" title="Delete">
@@ -1090,6 +1137,39 @@ function renderThemePicker() {
         const isActive = t.id === currentTheme;
         return `
             <div class="theme-card ${isActive ? 'active' : ''}" data-theme-id="${t.id}" onclick="setTheme('${t.id}')">
+                <div class="theme-swatch" style="background: linear-gradient(135deg, ${t.primary}, ${t.secondary})"></div>
+                <div class="theme-card-name">${t.name}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function setBaseTheme(themeId) {
+    const theme = BASE_THEMES.find(t => t.id === themeId);
+    if (!theme) return;
+
+    currentBaseTheme = themeId;
+    document.documentElement.setAttribute('data-base-theme', themeId);
+    localStorage.setItem('songsterr_base_theme', themeId);
+
+    // Update the picker UI
+    document.querySelectorAll('#base-theme-grid .theme-card').forEach(card => {
+        if (card.dataset.themeId === themeId) {
+            card.classList.add('active');
+        } else {
+            card.classList.remove('active');
+        }
+    });
+}
+
+function renderBaseThemePicker() {
+    const grid = document.getElementById('base-theme-grid');
+    if (!grid) return;
+
+    grid.innerHTML = BASE_THEMES.map(t => {
+        const isActive = t.id === currentBaseTheme;
+        return `
+            <div class="theme-card ${isActive ? 'active' : ''}" data-theme-id="${t.id}" onclick="setBaseTheme('${t.id}')">
                 <div class="theme-swatch" style="background: linear-gradient(135deg, ${t.primary}, ${t.secondary})"></div>
                 <div class="theme-card-name">${t.name}</div>
             </div>

@@ -5,6 +5,75 @@
 
 /* ─── Theme Definitions ──────────────────────────────────────────────────── */
 
+/* --- Base Themes --- */
+[data-base-theme="classic-dark"] {
+  --bg-body: #020617;          /* slate-950 */
+  --bg-surface: #0f172a;       /* slate-900 */
+  --bg-surface-hover: #1e293b; /* slate-800 */
+  --text-primary: #f8fafc;     /* slate-50 */
+  --text-secondary: #94a3b8;   /* slate-400 */
+  --text-muted: #64748b;       /* slate-500 */
+  --border-base: rgba(255, 255, 255, 0.1);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --bg-surface-glass: rgba(15, 23, 42, 0.7);
+  --scrollbar-track: rgba(15, 23, 42, 0.5);
+  --scrollbar-thumb: rgba(148, 163, 184, 0.3);
+  
+  /* Inputs */
+  --bg-input: rgba(15, 23, 42, 0.8);
+}
+
+:root,
+[data-base-theme="clean-light"] {
+  --bg-body: #f1f5f9;          /* slate-100 */
+  --bg-surface: #ffffff;       /* white */
+  --bg-surface-hover: #e2e8f0; /* slate-200 */
+  --text-primary: #0f172a;     /* slate-900 */
+  --text-secondary: #475569;   /* slate-600 */
+  --text-muted: #94a3b8;       /* slate-400 */
+  --border-base: rgba(0, 0, 0, 0.15);
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --bg-surface-glass: rgba(255, 255, 255, 0.7);
+  --scrollbar-track: rgba(226, 232, 240, 0.8);
+  --scrollbar-thumb: rgba(148, 163, 184, 0.6);
+  
+  --bg-input: #ffffff;
+}
+
+[data-base-theme="nord"] {
+  --bg-body: #2e3440;          /* nord0 */
+  --bg-surface: #3b4252;       /* nord1 */
+  --bg-surface-hover: #434c5e; /* nord2 */
+  --text-primary: #eceff4;     /* nord6 */
+  --text-secondary: #d8dee9;   /* nord4 */
+  --text-muted: #4c566a;       /* nord3 */
+  --border-base: #4c566a;
+  --border-subtle: #434c5e;
+  --bg-surface-glass: rgba(59, 66, 82, 0.7);
+  --scrollbar-track: rgba(46, 52, 64, 0.5);
+  --scrollbar-thumb: rgba(216, 222, 233, 0.3);
+  
+  --bg-input: #2e3440;
+}
+
+[data-base-theme="dracula"] {
+  --bg-body: #21222c;          
+  --bg-surface: #282a36;       
+  --bg-surface-hover: #44475a; 
+  --text-primary: #f8f8f2;     
+  --text-secondary: #bfbfbf;   
+  --text-muted: #6272a4;       
+  --border-base: rgba(248, 248, 242, 0.15);
+  --border-subtle: rgba(248, 248, 242, 0.08);
+  --bg-surface-glass: rgba(40, 42, 54, 0.7);
+  --scrollbar-track: rgba(33, 34, 44, 0.5);
+  --scrollbar-thumb: rgba(98, 114, 164, 0.4);
+  
+  --bg-input: #282a36;
+}
+
+/* --- Accent Themes --- */
+
 :root,
 [data-theme="turquoise-glow"] {
   --accent-1: #06b6d4;
@@ -49,6 +118,24 @@
   --accent-2-rgb: 249, 115, 22;
 }
 
+
+/* ─── Semantic Utility Classes ─────────────────────────────────────────────── */
+
+/* Backgrounds */
+body { background-color: var(--bg-body); color: var(--text-primary); }
+.bg-body { background-color: var(--bg-body); }
+.bg-surface { background-color: var(--bg-surface); }
+.bg-surface-hover:hover { background-color: var(--bg-surface-hover); }
+.bg-input { background-color: var(--bg-input); }
+
+/* Text */
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-muted { color: var(--text-muted); }
+
+/* Borders */
+.border-base { border-color: var(--border-base); }
+.border-subtle { border-color: var(--border-subtle); }
 
 /* ─── Accent Utility Classes ─────────────────────────────────────────────── */
 
@@ -117,10 +204,10 @@
 /* ─── Glassmorphism ──────────────────────────────────────────────────────── */
 
 .glass-card {
-  background: rgba(30, 41, 59, 0.7);
+  background: var(--bg-surface-glass);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
 }
 
 /* Subtle animated gradient border */
@@ -162,12 +249,12 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(30, 41, 59, 0.5);
+  background: var(--scrollbar-track);
   border-radius: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.3);
+  background: var(--scrollbar-thumb);
   border-radius: 4px;
 }
 
@@ -329,15 +416,15 @@
   gap: 0.75rem;
   padding: 0.75rem;
   border-radius: 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-input);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .theme-card:hover {
-  background: rgba(30, 41, 59, 0.8);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: var(--bg-surface-hover);
+  border-color: var(--border-base);
   transform: translateY(-1px);
 }
 
@@ -358,7 +445,7 @@
 .theme-card-name {
   font-size: 0.8rem;
   font-weight: 500;
-  color: #e2e8f0;
+  color: var(--text-primary);
   white-space: nowrap;
 }
 
@@ -366,8 +453,8 @@
 /* ─── Settings Sections ──────────────────────────────────────────────────── */
 
 .settings-section {
-  background: rgba(15, 23, 42, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
   border-radius: 0.75rem;
   padding: 1.25rem;
 }
@@ -377,7 +464,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #94a3b8;
+  color: var(--text-secondary);
   margin-bottom: 1rem;
   display: flex;
   align-items: center;
@@ -399,7 +486,7 @@
   flex-direction: column;
   align-items: center;
   padding: 3rem 1rem;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .empty-state-icon {
@@ -428,21 +515,21 @@
   gap: 0.375rem;
   padding: 0.375rem 0.75rem;
   border-radius: 0.5rem;
-  background: rgba(30, 41, 59, 0.8);
+  background: var(--bg-surface);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
   transition: all 0.2s ease;
 }
 
 .osmd-toggle:hover {
-  background: rgba(30, 41, 59, 0.95);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: var(--bg-surface-hover);
+  border-color: var(--border-base);
 }
 
 .osmd-toggle-label {
   font-size: 0.65rem;
   font-weight: 500;
-  color: #64748b;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }

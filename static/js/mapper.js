@@ -78,23 +78,23 @@ class VisualMapper {
             const y = getYForNote(data.step, data.octave);
             
             const wrapper = document.createElement('div');
-            wrapper.className = 'bg-slate-900/50 p-4 rounded-xl border border-white/5 space-y-3 mapper-item';
+            wrapper.className = 'bg-input p-4 rounded-xl border border-subtle space-y-3 mapper-item';
             wrapper.dataset.fret = fret;
 
-            const nameInput = `<input type="text" class="map-name block w-full bg-slate-800 border border-white/10 rounded px-3 py-2 text-sm text-white" placeholder="Instrument Name" value="${data.name || 'Drum ' + fret}">`;
+            const nameInput = `<input type="text" class="map-name block w-full bg-surface border border-base rounded px-3 py-2 text-sm text-primary" placeholder="Instrument Name" value="${data.name || 'Drum ' + fret}">`;
 
             const heads = ['normal', 'x', 'circle-x', 'diamond', 'triangle'];
             let toolbarHtml = `<div class="flex space-x-2">`;
             heads.forEach(h => {
-                const active = (data.notehead || 'normal') === h ? 'bg-accent border-accent' : 'bg-slate-800 border-white/10';
-                toolbarHtml += `<button type="button" class="btn-notehead w-8 h-8 rounded border flex items-center justify-center text-white ${active}" data-head="${h}">
+                const active = (data.notehead || 'normal') === h ? 'bg-accent border-accent' : 'bg-surface border-base';
+                toolbarHtml += `<button type="button" class="btn-notehead w-8 h-8 rounded border flex items-center justify-center text-primary ${active}" data-head="${h}">
                     <svg viewBox="-8 -8 16 16" class="w-4 h-4">${getNoteheadSVG(h)}</svg>
                 </button>`;
             });
             toolbarHtml += `</div>`;
 
             const svgHtml = `
-                <div class="relative h-40 w-full bg-slate-800/50 rounded-lg overflow-hidden border border-white/5 cursor-ns-resize select-none staff-container">
+                <div class="relative h-40 w-full bg-surface/50 rounded-lg overflow-hidden border border-subtle cursor-ns-resize select-none staff-container">
                     <svg width="100%" height="100%" viewBox="0 -10 100 100" preserveAspectRatio="xMidYMid meet">
                         <!-- Staff Lines (E4 to F5) -->
                         <line x1="10" y1="20" x2="90" y2="20" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
@@ -116,14 +116,14 @@ class VisualMapper {
 
             let infoHtml = `
                 <div class="flex items-center justify-between mb-2">
-                    <div class="flex items-center text-slate-300 font-medium text-sm">
+                    <div class="flex items-center text-secondary font-medium text-sm">
                         Drum ID: ${fret}
                     </div>`;
                     
             if (data.first_measure) {
                 infoHtml += `
                     <div class="flex items-center space-x-2">
-                        <span class="text-xs text-slate-400">First appears in Measure ${data.first_measure}</span>`;
+                        <span class="text-xs text-secondary">First appears in Measure ${data.first_measure}</span>`;
                 infoHtml += `</div>`;
             }
             infoHtml += `</div>`;
@@ -131,8 +131,8 @@ class VisualMapper {
             let previewHtml = '';
             if (data.preview_xml) {
                 previewHtml = `
-                    <div class="mt-4 border-t border-white/5 pt-4">
-                        <div class="text-xs text-slate-400 mb-2 font-medium">Context Preview (Measure ${data.first_measure}):</div>
+                    <div class="mt-4 border-t border-subtle pt-4">
+                        <div class="text-xs text-secondary mb-2 font-medium">Context Preview (Measure ${data.first_measure}):</div>
                         <div class="rounded-md overflow-hidden border border-slate-700 bg-transparent" id="preview-osmd-${fret}"></div>
                     </div>
                 `;
@@ -205,9 +205,9 @@ class VisualMapper {
             btn.addEventListener('click', (e) => {
                 buttons.forEach(b => {
                     b.classList.remove('bg-accent', 'border-accent');
-                    b.classList.add('bg-slate-800', 'border-white/10');
+                    b.classList.add('bg-surface', 'border-base');
                 });
-                btn.classList.remove('bg-slate-800', 'border-white/10');
+                btn.classList.remove('bg-surface', 'border-base');
                 btn.classList.add('bg-accent', 'border-accent');
                 
                 const head = btn.dataset.head;
@@ -325,7 +325,7 @@ class VisualMapperCompact {
         
         this.groups.forEach((group, index) => {
             const wrapper = document.createElement('div');
-            wrapper.className = 'bg-slate-900/50 p-4 rounded-xl border border-white/5 space-y-3';
+            wrapper.className = 'bg-input p-4 rounded-xl border border-subtle space-y-3';
             wrapper.dataset.groupId = group.id;
             
             // Set first fret as selected by default
@@ -334,13 +334,13 @@ class VisualMapperCompact {
 
             // Shared Toolbar
             const heads = ['normal', 'x', 'circle-x', 'diamond', 'triangle'];
-            let toolbarHtml = `<div class="flex justify-between items-center bg-slate-800/80 p-2 rounded-lg border border-white/10 group-toolbar">
-                <input type="text" class="map-name bg-transparent border-none text-sm text-white font-medium focus:ring-0 outline-none w-1/2" value="${initialData.name || 'Drum ' + initialFret}">
+            let toolbarHtml = `<div class="flex justify-between items-center bg-surface p-2 rounded-lg border border-base group-toolbar">
+                <input type="text" class="map-name bg-transparent border-none text-sm text-primary font-medium focus:ring-0 outline-none w-1/2" value="${initialData.name || 'Drum ' + initialFret}">
                 <div class="flex space-x-1">`;
             
             heads.forEach(h => {
                 const active = (initialData.notehead || 'normal') === h ? 'bg-accent border-accent' : 'border-transparent';
-                toolbarHtml += `<button type="button" class="btn-notehead w-6 h-6 rounded border flex items-center justify-center text-white ${active} hover:bg-slate-700" data-head="${h}" title="${h}">
+                toolbarHtml += `<button type="button" class="btn-notehead w-6 h-6 rounded border flex items-center justify-center text-primary ${active} hover:bg-surface-hover" data-head="${h}" title="${h}">
                     <svg viewBox="-8 -8 16 16" class="w-3 h-3">${getNoteheadSVG(h)}</svg>
                 </button>`;
             });
@@ -360,7 +360,7 @@ class VisualMapperCompact {
                 const x = spacing * (i + 1);
                 const isSelected = fret === initialFret;
                 const opacity = isSelected ? '1' : '0.4';
-                const colorClass = isSelected ? 'text-accent' : 'text-slate-400';
+                const colorClass = isSelected ? 'text-accent' : 'text-secondary';
                 
                 // Add ledger lines if needed
                 if (y <= 10) ledgersHtml += `<line x1="${x-8}" y1="10" x2="${x+8}" y2="10" data-fret="${fret}" opacity="${opacity}" class="ledger-line"/>`;
@@ -390,7 +390,7 @@ class VisualMapperCompact {
             });
 
             const svgHtml = `
-                <div class="relative h-40 w-full bg-slate-800/50 rounded-lg overflow-hidden border border-white/5 select-none staff-container" data-selected="${initialFret}">
+                <div class="relative h-40 w-full bg-surface/50 rounded-lg overflow-hidden border border-subtle select-none staff-container" data-selected="${initialFret}">
                     <svg width="100%" height="100%" viewBox="0 -10 300 100" preserveAspectRatio="xMidYMid meet">
                         <!-- Staff Lines -->
                         <line x1="5" y1="20" x2="295" y2="20" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
@@ -410,7 +410,7 @@ class VisualMapperCompact {
             `;
 
             wrapper.innerHTML = `
-                <div class="flex items-center text-slate-400 font-bold text-xs uppercase tracking-wider mb-2">
+                <div class="flex items-center text-secondary font-bold text-xs uppercase tracking-wider mb-2">
                     ${group.name}
                 </div>
                 ${toolbarHtml}
@@ -441,7 +441,7 @@ class VisualMapperCompact {
                 const head = btn.dataset.head;
                 if ((data.notehead || 'normal') === head) {
                     btn.classList.add('bg-accent', 'border-accent');
-                    btn.classList.remove('border-transparent', 'bg-slate-700');
+                    btn.classList.remove('border-transparent', 'bg-surface-hover');
                 } else {
                     btn.classList.remove('bg-accent', 'border-accent');
                     btn.classList.add('border-transparent');
@@ -452,12 +452,12 @@ class VisualMapperCompact {
             svg.querySelectorAll('.draggable-note').forEach(n => {
                 if (n.dataset.fret === fret) {
                     n.style.opacity = '1';
-                    n.classList.remove('text-slate-400');
+                    n.classList.remove('text-secondary');
                     n.classList.add('text-accent');
                 } else {
                     n.style.opacity = '0.4';
                     n.classList.remove('text-accent');
-                    n.classList.add('text-slate-400');
+                    n.classList.add('text-secondary');
                 }
             });
             svg.querySelectorAll('.ledger-line').forEach(l => {

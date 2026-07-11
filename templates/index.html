@@ -40,7 +40,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 
-<body class="bg-slate-900 text-slate-200 min-h-screen font-sans">
+<body class="bg-body text-primary min-h-screen font-sans">
 
     <!-- Background Decoration -->
     <div class="fixed inset-0 z-0 overflow-hidden pointer-events-none">
@@ -53,11 +53,11 @@
         <!-- Header -->
         <header class="w-full max-w-3xl mb-12 text-center mt-8">
             <a href="/" class="inline-block hover:opacity-80 transition-opacity">
-                <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl mb-3">
+                <h1 class="text-4xl font-bold tracking-tight text-primary sm:text-5xl mb-3">
                     Songsterr <span class="text-gradient">Drum Tabs</span>
                 </h1>
             </a>
-            <p class="text-lg text-slate-400 max-w-xl mx-auto">
+            <p class="text-lg text-secondary max-w-xl mx-auto">
                 Download high-quality drum tablature as print-ready PDF notation.
             </p>
         </header>
@@ -66,10 +66,10 @@
         <div class="fixed top-4 right-4 sm:top-6 sm:right-6 z-50">
             <button onclick="toggleOSMDDarkMode()" class="osmd-toggle focus:outline-none"
                 title="Toggle Sheet Music Dark / Light Mode">
-                <svg id="icon-moon" class="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg id="icon-moon" class="w-4 h-4 text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                 </svg>
-                <svg id="icon-sun" class="w-4 h-4 text-slate-400 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg id="icon-sun" class="w-4 h-4 text-secondary hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="5"></circle>
                     <line x1="12" y1="1" x2="12" y2="3"></line>
                     <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -88,24 +88,24 @@
         <main class="w-full max-w-3xl glass-card rounded-3xl shadow-2xl overflow-hidden flex flex-col">
 
             <!-- Tabs -->
-            <div class="flex border-b border-white/5 bg-slate-800/30">
+            <div class="flex border-b border-subtle bg-surface/30">
                 <button id="tab-search"
                     class="tab-btn active flex-1 py-4 px-6 text-sm font-medium"
                     onclick="switchTab('search')">
                     Search Songs
                 </button>
                 <button id="tab-url"
-                    class="tab-btn flex-1 py-4 px-6 text-sm font-medium text-slate-400"
+                    class="tab-btn flex-1 py-4 px-6 text-sm font-medium text-secondary"
                     onclick="switchTab('url')">
                     Direct URL
                 </button>
                 <button id="tab-library"
-                    class="tab-btn flex-1 py-4 px-6 text-sm font-medium text-slate-400"
+                    class="tab-btn flex-1 py-4 px-6 text-sm font-medium text-secondary"
                     onclick="switchTab('library')">
                     <i data-feather="book" class="w-4 h-4 inline mr-1"></i> Library
                 </button>
                 <button id="tab-settings"
-                    class="tab-btn flex-1 py-4 px-6 text-sm font-medium text-slate-400"
+                    class="tab-btn flex-1 py-4 px-6 text-sm font-medium text-secondary"
                     onclick="switchTab('settings')">
                     <i data-feather="settings" class="w-4 h-4 inline mr-1"></i> Settings
                 </button>
@@ -118,10 +118,10 @@
                     <div class="relative group">
                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <i data-feather="search"
-                                class="w-5 h-5 text-slate-500 group-focus-within:text-accent transition-colors"></i>
+                                class="w-5 h-5 text-muted group-focus-within:text-accent transition-colors"></i>
                         </div>
                         <input type="text" id="search-input"
-                            class="block w-full pl-11 pr-4 py-4 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-500 input-themed transition-all outline-none"
+                            class="block w-full pl-11 pr-4 py-4 bg-input border border-base rounded-xl text-primary placeholder-slate-500 input-themed transition-all outline-none"
                             placeholder="Type artist or song name (e.g. Metallica)..." autocomplete="off">
 
                         <div id="search-spinner" class="absolute inset-y-0 right-0 pr-4 flex items-center hidden">
@@ -146,15 +146,15 @@
                 <div id="panel-url" class="space-y-6 hidden transition-opacity duration-300">
                     <div class="space-y-4">
                         <div class="flex items-center justify-between">
-                            <label for="url-input" class="block text-sm font-medium text-slate-300">Paste Songsterr
+                            <label for="url-input" class="block text-sm font-medium text-secondary">Paste Songsterr
                                 URL</label>
                             <label class="flex items-center cursor-pointer">
-                                <span class="mr-2 text-xs font-medium text-slate-400">Batch Mode</span>
+                                <span class="mr-2 text-xs font-medium text-secondary">Batch Mode</span>
                                 <div class="relative">
                                     <input type="checkbox" id="batch-toggle" class="sr-only peer"
                                         onchange="toggleBatchMode()">
                                     <div
-                                        class="toggle-track block bg-slate-700 w-8 h-5 rounded-full border border-white/10 transition-colors" id="batch-toggle-track">
+                                        class="toggle-track block bg-surface-hover w-8 h-5 rounded-full border border-base transition-colors" id="batch-toggle-track">
                                     </div>
                                     <div
                                         class="dot absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition transform peer-checked:translate-x-3">
@@ -166,45 +166,45 @@
                         <div class="relative group" id="url-input-container">
                             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                 <i data-feather="link"
-                                    class="w-5 h-5 text-slate-500 group-focus-within:text-accent transition-colors"></i>
+                                    class="w-5 h-5 text-muted group-focus-within:text-accent transition-colors"></i>
                             </div>
                             <input type="url" id="url-input"
-                                class="block w-full pl-11 pr-4 py-4 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-500 input-themed transition-all outline-none"
+                                class="block w-full pl-11 pr-4 py-4 bg-input border border-base rounded-xl text-primary placeholder-slate-500 input-themed transition-all outline-none"
                                 placeholder="https://www.songsterr.com/a/wsa/..." autocomplete="off">
                         </div>
 
                         <div class="relative group hidden" id="batch-input-container">
                             <textarea id="batch-input" rows="4"
-                                class="block w-full px-4 py-4 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-500 input-themed transition-all outline-none resize-y custom-scrollbar"
+                                class="block w-full px-4 py-4 bg-input border border-base rounded-xl text-primary placeholder-slate-500 input-themed transition-all outline-none resize-y custom-scrollbar"
                                 placeholder="https://www.songsterr.com/a/wsa/...&#10;https://www.songsterr.com/a/wsa/..."
                                 autocomplete="off"></textarea>
                         </div>
 
-                        <div class="text-xs text-slate-500 space-y-1" id="url-helper-text">
+                        <div class="text-xs text-muted space-y-1" id="url-helper-text">
                             <p>Must be a valid Songsterr song URL.</p>
                         </div>
                     </div>
 
                     <div class="space-y-3 pt-2">
-                        <label class="block text-sm font-medium text-slate-300">Target BPM (Tempo Override)</label>
+                        <label class="block text-sm font-medium text-secondary">Target BPM (Tempo Override)</label>
                         <div class="flex items-center space-x-3">
                             <input type="number" id="bpm-input" placeholder="e.g. 120"
-                                class="block w-24 px-3 py-2 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-500 input-themed transition-all outline-none text-sm text-center">
-                            <span class="text-xs text-slate-500">Leave empty to use original song tempo.</span>
+                                class="block w-24 px-3 py-2 bg-input border border-base rounded-xl text-primary placeholder-slate-500 input-themed transition-all outline-none text-sm text-center">
+                            <span class="text-xs text-muted">Leave empty to use original song tempo.</span>
                         </div>
                     </div>
 
                     <div id="format-selection-container" class="space-y-3 pt-2 hidden">
-                        <label class="block text-sm font-medium text-slate-300">Format Selection</label>
+                        <label class="block text-sm font-medium text-secondary">Format Selection</label>
                         <div class="grid grid-cols-2 gap-3">
                             <label
-                                class="relative flex cursor-pointer rounded-lg border bg-slate-900/50 p-4 shadow-sm focus:outline-none transition-all format-option selected border-white/10">
+                                class="relative flex cursor-pointer rounded-lg border bg-input p-4 shadow-sm focus:outline-none transition-all format-option selected border-base">
                                 <input type="radio" name="format-select" value="musicxml" class="sr-only" checked
                                     onchange="updateFormatSelection(this)">
                                 <span class="flex flex-1">
                                     <span class="flex flex-col">
-                                        <span class="block text-sm font-medium text-white">MusicXML</span>
-                                        <span class="mt-1 flex items-center text-xs text-slate-400">Standard notation
+                                        <span class="block text-sm font-medium text-primary">MusicXML</span>
+                                        <span class="mt-1 flex items-center text-xs text-secondary">Standard notation
                                             format</span>
                                     </span>
                                 </span>
@@ -212,13 +212,13 @@
                             </label>
 
                             <label
-                                class="relative flex cursor-pointer rounded-lg border bg-slate-900/50 p-4 shadow-sm focus:outline-none transition-all format-option border-white/10">
+                                class="relative flex cursor-pointer rounded-lg border bg-input p-4 shadow-sm focus:outline-none transition-all format-option border-base">
                                 <input type="radio" name="format-select" value="pdf" class="sr-only"
                                     onchange="updateFormatSelection(this)">
                                 <span class="flex flex-1">
                                     <span class="flex flex-col">
-                                        <span class="block text-sm font-medium text-white">PDF</span>
-                                        <span class="mt-1 flex items-center text-xs text-slate-400">Printable sheet
+                                        <span class="block text-sm font-medium text-primary">PDF</span>
+                                        <span class="mt-1 flex items-center text-xs text-secondary">Printable sheet
                                             music</span>
                                     </span>
                                 </span>
@@ -237,7 +237,7 @@
                 <!-- Library Panel -->
                 <div id="panel-library" class="hidden space-y-4">
                     <div class="flex items-center justify-between mb-2">
-                        <h2 class="text-xl font-semibold text-white">Your Downloads</h2>
+                        <h2 class="text-xl font-semibold text-primary">Your Downloads</h2>
                         <button onclick="clearLibrary()"
                             class="text-xs font-medium text-red-400 hover:text-red-300 transition-colors">
                             Clear History
@@ -258,22 +258,22 @@
                 <!-- Progress Panel (Overlay) -->
                 <div id="panel-progress" class="hidden flex-col items-center justify-center py-8 space-y-6">
                     <div class="text-center space-y-2">
-                        <h3 id="progress-title" class="text-lg font-medium text-white">Downloading Tab</h3>
+                        <h3 id="progress-title" class="text-lg font-medium text-primary">Downloading Tab</h3>
                         <p id="progress-step" class="text-sm text-accent font-mono">Initializing...</p>
                     </div>
 
-                    <div class="w-full max-w-md bg-slate-800 rounded-full h-2.5 shadow-inner overflow-hidden">
+                    <div class="w-full max-w-md bg-surface rounded-full h-2.5 shadow-inner overflow-hidden">
                         <div id="progress-bar"
                             class="progress-bar-fill h-2.5 rounded-full transition-all duration-300 ease-out"
                             style="width: 0%"></div>
                     </div>
 
                     <div id="batch-progress-container" class="w-full max-w-md hidden mt-4">
-                        <div class="flex justify-between text-xs text-slate-400 mb-1">
+                        <div class="flex justify-between text-xs text-secondary mb-1">
                             <span id="batch-progress-text">Batch Progress (0/0)</span>
                             <span id="batch-progress-pct">0%</span>
                         </div>
-                        <div class="w-full bg-slate-800 rounded-full h-1.5 shadow-inner overflow-hidden">
+                        <div class="w-full bg-surface rounded-full h-1.5 shadow-inner overflow-hidden">
                             <div id="batch-progress-bar"
                                 class="progress-bar-fill h-1.5 rounded-full transition-all duration-300 ease-out"
                                 style="width: 0%"></div>
@@ -288,9 +288,9 @@
                             <i data-feather="alert-triangle" class="w-5 h-5 mr-2"></i>
                             Unknown Drums Detected
                         </h3>
-                        <p class="text-sm text-slate-300">We found MIDI IDs that aren't in our standard mapping. Please
+                        <p class="text-sm text-secondary">We found MIDI IDs that aren't in our standard mapping. Please
                             map them below so they appear correctly in your sheet music.</p>
-                        <div class="mt-3 bg-slate-800/50 rounded-lg p-3 border border-slate-700/50 text-xs text-slate-400 max-w-lg mx-auto text-left flex items-start">
+                        <div class="mt-3 bg-surface/50 rounded-lg p-3 border border-slate-700/50 text-xs text-secondary max-w-lg mx-auto text-left flex items-start">
                             <i data-feather="info" class="w-4 h-4 mr-2 shrink-0 mt-0.5 text-accent"></i>
                             <span><strong>Note:</strong> The staff line position of the red notes in the previews below is mathematically generated. Because the drum is unknown, its preview height will <strong>not match</strong> the original Songsterr layout. Use the preview purely to see the rhythmic timing.</span>
                         </div>
@@ -315,16 +315,16 @@
                     class="hidden flex-col items-center justify-center py-6 space-y-6 text-center w-full">
                     <div class="flex flex-col sm:flex-row items-center w-full mb-4 space-y-4 sm:space-y-0">
                         <button onclick="resetUI()" title="Go Back"
-                            class="mr-0 sm:mr-4 p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors flex items-center justify-center shrink-0">
+                            class="mr-0 sm:mr-4 p-2 text-secondary hover:text-primary hover:bg-white/10 rounded-xl transition-colors flex items-center justify-center shrink-0">
                             <i data-feather="arrow-left" class="w-6 h-6"></i>
                         </button>
                         <div class="text-center sm:text-left flex-1 min-w-0">
-                            <h3 class="text-xl font-bold text-white mb-1 truncate">Download Complete!</h3>
-                            <p id="result-song-name" class="text-slate-400 truncate">Artist - Title</p>
+                            <h3 class="text-xl font-bold text-primary mb-1 truncate">Download Complete!</h3>
+                            <p id="result-song-name" class="text-secondary truncate">Artist - Title</p>
                         </div>
                         <div class="flex space-x-3 shrink-0">
                             <a id="result-download-link" href="#" download
-                                class="flex items-center justify-center py-2 px-4 border border-white/10 rounded-xl text-sm font-medium text-white bg-slate-800 hover:bg-slate-700 transition-colors">
+                                class="flex items-center justify-center py-2 px-4 border border-base rounded-xl text-sm font-medium text-primary bg-surface hover:bg-surface-hover transition-colors">
                                 <i data-feather="download" class="w-4 h-4 mr-2"></i>
                                 Save .musicxml
                             </a>
@@ -346,25 +346,35 @@
                 <!-- Global Settings Panel -->
                 <div id="panel-settings" class="hidden flex-col items-center py-4 space-y-5">
                     <div class="w-full flex justify-between items-center">
-                        <h3 class="text-lg font-medium text-white flex items-center">
+                        <h3 class="text-lg font-medium text-primary flex items-center">
                             <i data-feather="settings" class="w-5 h-5 mr-2"></i>
                             Settings
                         </h3>
                         <div class="flex items-center space-x-3">
                             <button onclick="resetGlobalMapping()"
-                                class="text-xs font-medium text-slate-400 hover:text-white bg-white/5 px-3 py-1.5 rounded-lg border border-white/10 transition-colors">
+                                class="text-xs font-medium text-secondary hover:text-primary bg-white/5 px-3 py-1.5 rounded-lg border border-base transition-colors">
                                 Reset to Defaults
                             </button>
                         </div>
                     </div>
 
-                    <!-- Section: Theme Selection -->
+                    <!-- Section: Base Style -->
                     <div class="settings-section w-full">
                         <div class="settings-section-title">
-                            <i data-feather="palette"></i> Theme
+                            <i data-feather="layout"></i> Base Style
+                        </div>
+                        <div id="base-theme-grid" class="theme-grid">
+                            <!-- Base theme cards injected by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Section: Accent Color -->
+                    <div class="settings-section w-full">
+                        <div class="settings-section-title">
+                            <i data-feather="droplet"></i> Accent Color
                         </div>
                         <div id="theme-grid" class="theme-grid">
-                            <!-- Theme cards injected by JS -->
+                            <!-- Accent theme cards injected by JS -->
                         </div>
                     </div>
 
@@ -375,9 +385,9 @@
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-medium text-slate-400 mb-1">Page Format</label>
+                                <label class="block text-xs font-medium text-secondary mb-1">Page Format</label>
                                 <select id="style-page-format"
-                                    class="block w-full px-3 py-2 bg-slate-800 border border-white/10 rounded-lg text-white input-themed outline-none text-sm">
+                                    class="block w-full px-3 py-2 bg-surface border border-base rounded-lg text-primary input-themed outline-none text-sm">
                                     <option value="A4_P">A4 Portrait</option>
                                     <option value="A4_L">A4 Landscape</option>
                                     <option value="Letter_P">US Letter Portrait</option>
@@ -385,28 +395,28 @@
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-slate-400 mb-1">Zoom / Scale (<span
+                                <label class="block text-xs font-medium text-secondary mb-1">Zoom / Scale (<span
                                         id="style-zoom-val">0.6</span>)</label>
                                 <input type="range" id="style-zoom" min="0.3" max="1.5" step="0.1" value="0.6"
                                     oninput="document.getElementById('style-zoom-val').innerText = this.value"
-                                    class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer mt-2">
+                                    class="w-full h-2 bg-surface rounded-lg appearance-none cursor-pointer mt-2">
                             </div>
                             <div class="flex items-center justify-between col-span-2">
-                                <span class="text-sm text-slate-300">Draw Title & Artist</span>
+                                <span class="text-sm text-secondary">Draw Title & Artist</span>
                                 <label class="flex items-center cursor-pointer">
                                     <div class="relative">
                                         <input type="checkbox" id="style-draw-title" class="sr-only peer" checked>
-                                        <div class="toggle-track block bg-slate-700 w-8 h-5 rounded-full border border-white/10 transition-colors"></div>
+                                        <div class="toggle-track block bg-surface-hover w-8 h-5 rounded-full border border-base transition-colors"></div>
                                         <div class="dot absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition transform peer-checked:translate-x-3"></div>
                                     </div>
                                 </label>
                             </div>
                             <div class="flex items-center justify-between col-span-2">
-                                <span class="text-sm text-slate-300">Draw Measure Numbers</span>
+                                <span class="text-sm text-secondary">Draw Measure Numbers</span>
                                 <label class="flex items-center cursor-pointer">
                                     <div class="relative">
                                         <input type="checkbox" id="style-draw-measures" class="sr-only peer" checked>
-                                        <div class="toggle-track block bg-slate-700 w-8 h-5 rounded-full border border-white/10 transition-colors"></div>
+                                        <div class="toggle-track block bg-surface-hover w-8 h-5 rounded-full border border-base transition-colors"></div>
                                         <div class="dot absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition transform peer-checked:translate-x-3"></div>
                                     </div>
                                 </label>
@@ -421,30 +431,30 @@
                         </div>
                         <div class="grid grid-cols-3 gap-3">
                             <div>
-                                <label class="block text-xs text-slate-400 mb-1">Background</label>
+                                <label class="block text-xs text-secondary mb-1">Background</label>
                                 <div class="flex items-center space-x-2">
                                     <input type="color" id="color-dark-bg"
                                         class="w-6 h-6 rounded bg-transparent border-0 p-0 cursor-pointer"
                                         value="#1c1d1f" onchange="updateDarkThemeColors()">
-                                    <span id="label-color-dark-bg" class="text-xs text-slate-300 font-mono">#1c1d1f</span>
+                                    <span id="label-color-dark-bg" class="text-xs text-secondary font-mono">#1c1d1f</span>
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-xs text-slate-400 mb-1">Staff & Layout</label>
+                                <label class="block text-xs text-secondary mb-1">Staff & Layout</label>
                                 <div class="flex items-center space-x-2">
                                     <input type="color" id="color-dark-staff"
                                         class="w-6 h-6 rounded bg-transparent border-0 p-0 cursor-pointer"
                                         value="#6d6d6d" onchange="updateDarkThemeColors()">
-                                    <span id="label-color-dark-staff" class="text-xs text-slate-300 font-mono">#6d6d6d</span>
+                                    <span id="label-color-dark-staff" class="text-xs text-secondary font-mono">#6d6d6d</span>
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-xs text-slate-400 mb-1">Notes & Rests</label>
+                                <label class="block text-xs text-secondary mb-1">Notes & Rests</label>
                                 <div class="flex items-center space-x-2">
                                     <input type="color" id="color-dark-note"
                                         class="w-6 h-6 rounded bg-transparent border-0 p-0 cursor-pointer"
                                         value="#cacaca" onchange="updateDarkThemeColors()">
-                                    <span id="label-color-dark-note" class="text-xs text-slate-300 font-mono">#cacaca</span>
+                                    <span id="label-color-dark-note" class="text-xs text-secondary font-mono">#cacaca</span>
                                 </div>
                             </div>
                         </div>
@@ -477,7 +487,7 @@
 
     <!-- Error Toast -->
     <div id="toast"
-        class="fixed bottom-4 right-4 transform translate-y-full opacity-0 transition-all duration-300 z-50 flex items-center p-4 mb-4 text-slate-200 bg-red-900/80 border border-red-500/50 rounded-xl shadow-2xl backdrop-blur-md"
+        class="fixed bottom-4 right-4 transform translate-y-full opacity-0 transition-all duration-300 z-50 flex items-center p-4 mb-4 text-primary bg-red-900/80 border border-red-500/50 rounded-xl shadow-2xl backdrop-blur-md"
         role="alert">
         <div
             class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-red-400 bg-red-900/50 rounded-lg mr-3">
@@ -485,7 +495,7 @@
         </div>
         <div id="toast-message" class="text-sm font-medium mr-4">Error message goes here.</div>
         <button type="button" onclick="hideToast('toast')"
-            class="ml-auto -mx-1.5 -my-1.5 bg-transparent text-slate-400 hover:text-white rounded-lg focus:ring-2 focus:ring-slate-400 p-1.5 hover:bg-white/10 inline-flex h-8 w-8 transition-colors">
+            class="ml-auto -mx-1.5 -my-1.5 bg-transparent text-secondary hover:text-primary rounded-lg focus:ring-2 focus:ring-slate-400 p-1.5 hover:bg-white/10 inline-flex h-8 w-8 transition-colors">
             <span class="sr-only">Close</span>
             <i data-feather="x" class="w-4 h-4"></i>
         </button>
@@ -493,7 +503,7 @@
 
     <!-- Success Toast -->
     <div id="toast-success"
-        class="fixed bottom-4 right-4 transform translate-y-full opacity-0 transition-all duration-300 z-50 flex items-center p-4 mb-4 text-slate-200 bg-emerald-900/80 border border-emerald-500/50 rounded-xl shadow-2xl backdrop-blur-md"
+        class="fixed bottom-4 right-4 transform translate-y-full opacity-0 transition-all duration-300 z-50 flex items-center p-4 mb-4 text-primary bg-emerald-900/80 border border-emerald-500/50 rounded-xl shadow-2xl backdrop-blur-md"
         role="alert">
         <div
             class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-emerald-400 bg-emerald-900/50 rounded-lg mr-3">
@@ -501,7 +511,7 @@
         </div>
         <div id="toast-success-message" class="text-sm font-medium mr-4">Success message goes here.</div>
         <button type="button" onclick="hideToast('toast-success')"
-            class="ml-auto -mx-1.5 -my-1.5 bg-transparent text-slate-400 hover:text-white rounded-lg focus:ring-2 focus:ring-slate-400 p-1.5 hover:bg-white/10 inline-flex h-8 w-8 transition-colors">
+            class="ml-auto -mx-1.5 -my-1.5 bg-transparent text-secondary hover:text-primary rounded-lg focus:ring-2 focus:ring-slate-400 p-1.5 hover:bg-white/10 inline-flex h-8 w-8 transition-colors">
             <span class="sr-only">Close</span>
             <i data-feather="x" class="w-4 h-4"></i>
         </button>
