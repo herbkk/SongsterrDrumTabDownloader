@@ -216,6 +216,14 @@ body { background-color: var(--bg-body); color: var(--text-primary); }
   border-color: var(--accent-1);
 }
 
+.dot {
+  background-color: var(--text-secondary);
+}
+
+.peer:checked ~ .dot {
+  background-color: #ffffff;
+}
+
 /* ─── Glassmorphism ──────────────────────────────────────────────────────── */
 
 .glass-card {
