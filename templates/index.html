@@ -115,13 +115,15 @@
 
                 <!-- Search Panel -->
                 <div id="panel-search" class="space-y-6 block transition-opacity duration-300">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-medium text-primary flex items-center">
+                            <i data-feather="search" class="w-5 h-5 mr-2 text-accent"></i>
+                            Find a Drum Track
+                        </h3>
+                    </div>
                     <div class="relative group">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <i data-feather="search"
-                                class="w-5 h-5 text-muted group-focus-within:text-accent transition-colors"></i>
-                        </div>
                         <input type="text" id="search-input"
-                            class="block w-full pl-11 pr-4 py-4 bg-input border border-base rounded-xl text-primary placeholder-slate-500 input-themed transition-all outline-none"
+                            class="block w-full px-4 py-4 bg-input border border-base rounded-xl text-primary placeholder-slate-500 input-themed transition-all outline-none"
                             placeholder="Type artist or song name (e.g. Metallica)..." autocomplete="off">
 
                         <div id="search-spinner" class="absolute inset-y-0 right-0 pr-4 flex items-center hidden">
@@ -144,32 +146,28 @@
 
                 <!-- URL Panel -->
                 <div id="panel-url" class="space-y-6 hidden transition-opacity duration-300">
-                    <div class="space-y-4">
-                        <div class="flex items-center justify-between">
-                            <label for="url-input" class="block text-sm font-medium text-secondary">Paste Songsterr
-                                URL</label>
-                            <label class="flex items-center cursor-pointer">
-                                <span class="mr-2 text-xs font-medium text-secondary">Batch Mode</span>
-                                <div class="relative">
-                                    <input type="checkbox" id="batch-toggle" class="sr-only peer"
-                                        onchange="toggleBatchMode()">
-                                    <div
-                                        class="toggle-track block bg-surface-hover w-8 h-5 rounded-full border border-base transition-colors" id="batch-toggle-track">
-                                    </div>
-                                    <div
-                                        class="dot absolute left-1 top-1 w-3 h-3 rounded-full transition transform peer-checked:translate-x-3">
-                                    </div>
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-medium text-primary flex items-center">
+                            <i data-feather="link" class="w-5 h-5 mr-2 text-accent"></i>
+                            Direct Download
+                        </h3>
+                        <label class="flex items-center cursor-pointer">
+                            <span class="mr-2 text-xs font-medium text-secondary">Batch Mode</span>
+                            <div class="relative">
+                                <input type="checkbox" id="batch-toggle" class="sr-only peer"
+                                    onchange="toggleBatchMode()">
+                                <div class="toggle-track block bg-surface-hover w-8 h-5 rounded-full border border-base transition-colors" id="batch-toggle-track">
                                 </div>
-                            </label>
-                        </div>
-
-                        <div class="relative group" id="url-input-container">
-                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <i data-feather="link"
-                                    class="w-5 h-5 text-muted group-focus-within:text-accent transition-colors"></i>
+                                <div class="dot absolute left-1 top-1 w-3 h-3 rounded-full transition transform peer-checked:translate-x-3">
+                                </div>
                             </div>
+                        </label>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="relative group" id="url-input-container">
                             <input type="url" id="url-input"
-                                class="block w-full pl-11 pr-4 py-4 bg-input border border-base rounded-xl text-primary placeholder-slate-500 input-themed transition-all outline-none"
+                                class="block w-full px-4 py-4 bg-input border border-base rounded-xl text-primary placeholder-slate-500 input-themed transition-all outline-none"
                                 placeholder="https://www.songsterr.com/a/wsa/..." autocomplete="off">
                         </div>
 
@@ -235,11 +233,15 @@
                 </div>
 
                 <!-- Library Panel -->
-                <div id="panel-library" class="hidden space-y-4">
-                    <div class="flex items-center justify-between mb-2">
-                        <h2 class="text-xl font-semibold text-primary">Your Downloads</h2>
+                <div id="panel-library" class="space-y-6 hidden transition-opacity duration-300">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-medium text-primary flex items-center">
+                            <i data-feather="book" class="w-5 h-5 mr-2 text-accent"></i>
+                            Your Local Library
+                        </h3>
                         <button onclick="clearLibrary()"
-                            class="text-xs font-medium text-red-400 hover:text-red-300 transition-colors">
+                            class="text-xs font-medium text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded-lg border border-red-500/20 transition-colors flex items-center shadow-sm">
+                            <i data-feather="trash-2" class="w-3.5 h-3.5 mr-1.5"></i>
                             Clear History
                         </button>
                     </div>
@@ -253,6 +255,7 @@
                             <p class="empty-state-text">No songs in your library yet.<br>Download a tab to save it here!</p>
                         </div>
                     </div>
+
                 </div>
 
                 <!-- Progress Panel (Overlay) -->
@@ -387,15 +390,16 @@
                 </div>
 
                 <!-- Global Settings Panel -->
-                <div id="panel-settings" class="hidden flex-col items-center py-4 space-y-5">
-                    <div class="w-full flex justify-between items-center">
+                <div id="panel-settings" class="space-y-6 hidden transition-opacity duration-300">
+                    <div class="flex items-center justify-between">
                         <h3 class="text-lg font-medium text-primary flex items-center">
-                            <i data-feather="settings" class="w-5 h-5 mr-2"></i>
-                            Settings
+                            <i data-feather="settings" class="w-5 h-5 mr-2 text-accent"></i>
+                            Application Settings
                         </h3>
                         <div class="flex items-center space-x-3">
                             <button onclick="resetGlobalMapping()"
-                                class="text-xs font-medium text-secondary hover:text-primary bg-white/5 px-3 py-1.5 rounded-lg border border-base transition-colors">
+                                class="text-xs font-medium text-secondary hover:text-primary bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg border border-base transition-colors flex items-center shadow-sm">
+                                <i data-feather="refresh-cw" class="w-3.5 h-3.5 mr-1.5"></i>
                                 Reset to Defaults
                             </button>
                         </div>
@@ -521,6 +525,7 @@
                             <!-- Global mapping populated here -->
                         </div>
                     </div>
+
                 </div>
 
             </div>
