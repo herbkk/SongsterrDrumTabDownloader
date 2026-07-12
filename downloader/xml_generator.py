@@ -264,6 +264,19 @@ class MusicXMLGenerator:
             for t in track_data["automations"].get("tempo", []):
                 tempos[t.get("measure", 0)] = t.get("bpm", 120)
 
+        # Pre-process ties
+        active_notes = {}  # fret -> note dict
+        for m in measures:
+            for v in m.get("voices", []):
+                for b in v.get("beats", []):
+                    for n in b.get("notes", []):
+                        f = n.get("fret")
+                        if n.get("tie"):
+                            prev_n = active_notes.get(f)
+                            if prev_n:
+                                prev_n["tieStart"] = True
+                        active_notes[f] = n
+
         active_ending = None
 
         for mi, measure_data in enumerate(measures):
@@ -290,24 +303,50 @@ class MusicXMLGenerator:
                     ET.SubElement(time, "beat-type").text = str(sig[1])
             
             # Tempo / Direction
-            if mi in tempos or "marker" in measure_data:
+            tempo_val = None
+            if mi in tempos:
+                tempo_val = tempos[mi]
+            elif "tempo" in measure_data:
+                tv = measure_data["tempo"]
+                tempo_val = tv.get("bpm", 120) if isinstance(tv, dict) else int(tv)
+
+            marker_text = ""
+            if "marker" in measure_data:
+                m_val = measure_data["marker"]
+                marker_text = m_val.get("text", "") if isinstance(m_val, dict) else str(m_val)
+            elif "rehearsal" in measure_data:
+                marker_text = str(measure_data["rehearsal"])
+            elif "text" in measure_data:
+                marker_text = str(measure_data["text"])
+
+            swing_text = ""
+            triplet_feel = measure_data.get("tripletFeel", measure_data.get("feel", measure_data.get("swing", "")))
+            if str(triplet_feel).lower() in ["eighths", "true", "16ths", "8th", "16th"]:
+                swing_text = "Swing"
+            elif str(triplet_feel).lower() in ["none", "false", "off"]:
+                swing_text = "Straight"
+
+            if marker_text or swing_text:
                 dir_elem = ET.SubElement(measure_elem, "direction", placement="above")
                 dir_type = ET.SubElement(dir_elem, "direction-type")
-                
-                if "marker" in measure_data:
+                if marker_text:
                     words = ET.SubElement(dir_type, "words", font_weight="bold")
-                    words.text = measure_data["marker"].get("text", "")
-                    
-                if mi in tempos:
-                    # Metronome mark
-                    dir_type2 = ET.SubElement(dir_elem, "direction-type")
-                    met = ET.SubElement(dir_type2, "metronome")
-                    ET.SubElement(met, "beat-unit").text = "quarter"
-                    ET.SubElement(met, "per-minute").text = str(tempos[mi])
-                    
-                    # Sound tempo tag for playback
-                    sound = ET.SubElement(dir_elem, "sound")
-                    sound.set("tempo", str(tempos[mi]))
+                    words.text = marker_text
+                if swing_text:
+                    words = ET.SubElement(dir_type, "words", font_weight="bold")
+                    if swing_text == "Swing":
+                        words.text = "Swing (♫ = ♩ ♪³)"
+                    else:
+                        words.text = "Straight (♫ = ♫)"
+
+            if tempo_val:
+                dir_elem = ET.SubElement(measure_elem, "direction", placement="above")
+                dir_type = ET.SubElement(dir_elem, "direction-type")
+                met = ET.SubElement(dir_type, "metronome")
+                ET.SubElement(met, "beat-unit").text = "quarter"
+                ET.SubElement(met, "per-minute").text = str(tempo_val)
+                sound = ET.SubElement(dir_elem, "sound")
+                sound.set("tempo", str(tempo_val))
 
             # Barline / Repeats / Endings (Left)
             repeat_open = measure_data.get("repeatStart")
@@ -402,16 +441,37 @@ class MusicXMLGenerator:
             for i, n in enumerate(notes):
                 is_chord = (i > 0) # Subsequent notes in the same beat are chords
                 
+                fret = n.get("fret")
+                mapping = self.mapping.get(fret)
+                if not mapping:
+                    mapping = get_fallback_drum(fret)
+
+                # Check for Flams/Drags (Grace notes)
+                num_graces = 0
+                if n.get("flam"): num_graces = 1
+                elif n.get("drag"): num_graces = 2
+                
+                for g_idx in range(num_graces):
+                    grace_elem = ET.SubElement(measure_elem, "note")
+                    ET.SubElement(grace_elem, "grace", slash="yes" if g_idx == 0 else "no")
+                    
+                    unpitched = ET.SubElement(grace_elem, "unpitched")
+                    ET.SubElement(unpitched, "display-step").text = mapping["step"]
+                    ET.SubElement(unpitched, "display-octave").text = str(mapping["octave"])
+                    
+                    if fret is not None:
+                        ET.SubElement(grace_elem, "instrument", id=f"P1-I{fret}")
+                    ET.SubElement(grace_elem, "voice").text = "1"
+                    ET.SubElement(grace_elem, "type").text = "16th"
+                    ET.SubElement(grace_elem, "stem").text = "up"
+                    if "notehead" in mapping:
+                        ET.SubElement(grace_elem, "notehead").text = mapping["notehead"]
+                
                 note_elem = ET.SubElement(measure_elem, "note")
                 
                 if is_chord:
                     ET.SubElement(note_elem, "chord")
                     
-                fret = n.get("fret")
-                mapping = self.mapping.get(fret)
-                if not mapping:
-                    mapping = get_fallback_drum(fret)
-                
                 unpitched = ET.SubElement(note_elem, "unpitched")
                 ET.SubElement(unpitched, "display-step").text = mapping["step"]
                 ET.SubElement(unpitched, "display-octave").text = str(mapping["octave"])
@@ -462,6 +522,49 @@ class MusicXMLGenerator:
                         ET.SubElement(note_elem, "notehead", parentheses="yes").text = "normal"
                     else:
                         notehead_elem.set("parentheses", "yes")
+
+                # Articulations & Slurs
+                articulations = []
+                if n.get("accentuated") == 1 or n.get("accent"): articulations.append("accent")
+                if n.get("accentuated") == 2 or n.get("heavyAccent") or n.get("marcato"): articulations.append("strong-accent")
+                
+                slur_start = n.get("slur") == "start" or n.get("legato") == "start"
+                slur_stop = n.get("slur") == "stop" or n.get("legato") == "stop"
+                tie_start = n.get("tieStart")
+                tie_stop = n.get("tie")
+
+                if articulations or slur_start or slur_stop or tie_start or tie_stop:
+                    notations = note_elem.find("notations")
+                    if notations is None:
+                        notations = ET.SubElement(note_elem, "notations")
+                    
+                    if tie_start:
+                        ET.SubElement(notations, "tied", type="start")
+                        ET.SubElement(notations, "slur", type="start", number="1")
+                    if tie_stop:
+                        ET.SubElement(notations, "tied", type="stop")
+                        ET.SubElement(notations, "slur", type="stop", number="1")
+                    
+                    if slur_start:
+                        ET.SubElement(notations, "slur", type="start", number="1")
+                    if slur_stop:
+                        ET.SubElement(notations, "slur", type="stop", number="1")
+                        
+                    if articulations:
+                        art_elem = notations.find("articulations")
+                        if art_elem is None:
+                            art_elem = ET.SubElement(notations, "articulations")
+                        for art in articulations:
+                            if art == "strong-accent":
+                                ET.SubElement(art_elem, "strong-accent", type="up")
+                            else:
+                                ET.SubElement(art_elem, art)
+
+                # Tie handling (for playback)
+                if tie_start:
+                    ET.SubElement(note_elem, "tie", type="start")
+                if tie_stop:
+                    ET.SubElement(note_elem, "tie", type="stop")
 
         # Apply auto-beaming after all notes are added to the measure
         apply_auto_beaming(measure_elem, DIVISIONS)

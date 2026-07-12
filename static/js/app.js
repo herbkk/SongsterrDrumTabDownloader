@@ -665,6 +665,16 @@ async function showSuccess(result) {
     titleEl.dataset.title = result.title;
     document.getElementById('result-download-link').href = result.downloadUrl;
 
+    const songsterrLink = document.getElementById('result-songsterr-link');
+    if (songsterrLink && currentDownloadUrl) {
+        songsterrLink.href = currentDownloadUrl;
+        songsterrLink.classList.remove('hidden');
+        songsterrLink.classList.add('flex');
+    } else if (songsterrLink) {
+        songsterrLink.classList.add('hidden');
+        songsterrLink.classList.remove('flex');
+    }
+
     // Render OSMD
     const osmdContainer = document.getElementById('osmd-container');
     osmdContainer.innerHTML = ''; // Clear previous
