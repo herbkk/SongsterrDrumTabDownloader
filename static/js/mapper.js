@@ -340,7 +340,7 @@ class VisualMapperCompact {
             
             heads.forEach(h => {
                 const active = (initialData.notehead || 'normal') === h ? 'bg-accent border-accent' : 'border-transparent';
-                toolbarHtml += `<button type="button" class="btn-notehead w-6 h-6 rounded border flex items-center justify-center text-primary ${active} hover:bg-surface-hover" data-head="${h}" title="${h}">
+                toolbarHtml += `<button type="button" class="btn-notehead w-6 h-6 rounded border flex items-center justify-center text-primary ${active} hover:bg-surface-hover" data-head="${h}" data-tooltip="${h}">
                     <svg viewBox="-8 -8 16 16" class="w-3 h-3">${getNoteheadSVG(h)}</svg>
                 </button>`;
             });

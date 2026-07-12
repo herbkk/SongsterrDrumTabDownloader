@@ -65,7 +65,7 @@
         <!-- Floating Sheet Music Dark Mode Toggle -->
         <div class="fixed top-4 right-4 sm:top-6 sm:right-6 z-50">
             <button onclick="toggleOSMDDarkMode()" class="osmd-toggle focus:outline-none"
-                title="Toggle Sheet Music Dark / Light Mode">
+                data-tooltip="Toggle Sheet Music Dark / Light Mode">
                 <svg id="icon-moon" class="w-4 h-4 text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                 </svg>
@@ -336,7 +336,7 @@
                 <div id="panel-result"
                     class="hidden flex-col items-center justify-center py-6 space-y-6 text-center w-full">
                     <div class="flex flex-col sm:flex-row items-center w-full mb-4 space-y-4 sm:space-y-0">
-                        <button onclick="resetUI()" title="Go Back"
+                        <button onclick="resetUI()" data-tooltip="Go Back"
                             class="mr-0 sm:mr-4 p-2 text-secondary hover:text-primary hover:bg-white/10 rounded-xl transition-colors flex items-center justify-center shrink-0">
                             <i data-feather="arrow-left" class="w-6 h-6"></i>
                         </button>
@@ -345,11 +345,11 @@
                             <p id="result-song-name" class="text-secondary truncate">Artist - Title</p>
                         </div>
                         <div class="flex space-x-3 shrink-0">
-                            <a id="result-songsterr-link" href="#" target="_blank" title="View on Songsterr"
+                            <a id="result-songsterr-link" href="#" target="_blank" data-tooltip="View on Songsterr"
                                 class="hidden items-center justify-center w-11 h-11 border border-base rounded-xl hover:opacity-80 transition-opacity overflow-hidden shrink-0">
                                 <img src="/static/img/Songsterr_Logo.svg" alt="Songsterr" class="w-full h-full object-cover">
                             </a>
-                            <button id="btn-toggle-stem" onclick="toggleStemDirection()" title="Toggle Stem Direction"
+                            <button id="btn-toggle-stem" onclick="toggleStemDirection()" data-tooltip="Toggle Stem Direction"
                                 class="flex items-center justify-center w-11 h-11 border border-base rounded-xl hover:bg-surface-hover text-secondary hover:text-primary transition-colors shrink-0">
                                 <svg id="icon-stem-up" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                                     <circle cx="9" cy="17" r="4" />

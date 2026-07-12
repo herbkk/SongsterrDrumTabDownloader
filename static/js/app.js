@@ -319,7 +319,7 @@ function renderSearchResults(results) {
                     <div class="bg-surface px-2 py-1 rounded text-xs text-secondary font-medium mb-1 border border-subtle">
                         <i data-feather="box" class="w-3 h-3 inline mr-1 text-accent"></i>Drums
                     </div>
-                    <div class="text-xs" title="Difficulty">
+                    <div class="text-xs" data-tooltip="Difficulty">
                         ${diffHtml}
                     </div>
                 </div>
@@ -1377,7 +1377,7 @@ function renderLibrary() {
         if (item.customMapping) {
             const count = Object.keys(item.customMapping).length;
             if (count > 0) {
-                badgeHtml = `<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent-glow text-accent border border-accent-subtle flex items-center" title="${count} Custom Drum Mappings Saved"><i data-feather="settings" class="w-3 h-3 mr-1"></i>${count} Mappings</span>`;
+                badgeHtml = `<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent-glow text-accent border border-accent-subtle flex items-center" data-tooltip="${count} Custom Drum Mappings Saved"><i data-feather="settings" class="w-3 h-3 mr-1"></i>${count} Mappings</span>`;
             }
         }
 
@@ -1397,10 +1397,10 @@ function renderLibrary() {
                     </div>
                 </div>
                 <div class="flex items-center space-x-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                    <button onclick="startDownload({url: '${item.url}'})" class="p-2 text-accent hover:text-primary hover:bg-white/5 rounded-lg transition-colors" title="Re-open">
+                    <button onclick="startDownload({url: '${item.url}'})" class="p-2 text-accent hover:text-primary hover:bg-white/5 rounded-lg transition-colors" data-tooltip="Re-open">
                         <i data-feather="external-link" class="w-4 h-4"></i>
                     </button>
-                    <button onclick="removeFromLibrary('${item.url}')" class="p-2 text-red-400 hover:text-red-300 hover:bg-white/5 rounded-lg transition-colors" title="Delete">
+                    <button onclick="removeFromLibrary('${item.url}')" class="p-2 text-red-400 hover:text-red-300 hover:bg-white/5 rounded-lg transition-colors" data-tooltip="Delete">
                         <i data-feather="trash-2" class="w-4 h-4"></i>
                     </button>
                 </div>
@@ -1478,3 +1478,110 @@ function renderBaseThemePicker() {
         `;
     }).join('');
 }
+
+// --- Tooltip Manager ---
+
+class TooltipManager {
+    constructor() {
+        this.tooltipEl = document.createElement('div');
+        this.tooltipEl.id = 'global-tooltip';
+        document.body.appendChild(this.tooltipEl);
+        
+        this.hoveredElement = null;
+        this.currentTarget = null;
+        this.showTimeout = null;
+        this.init();
+    }
+
+    init() {
+        document.addEventListener('mouseover', (e) => {
+            const target = e.target.closest('[data-tooltip]');
+            if (target) {
+                if (this.currentTarget === target) return;
+                this.currentTarget = target;
+                this.scheduleShow(target);
+            }
+        });
+
+        document.addEventListener('mouseout', (e) => {
+            const target = e.target.closest('[data-tooltip]');
+            if (target) {
+                if (e.relatedTarget && target.contains(e.relatedTarget)) return;
+                if (this.currentTarget === target) {
+                    this.currentTarget = null;
+                    this.hideTooltip();
+                }
+            }
+        });
+
+        // Hide tooltip on click to prevent ghost tooltips
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('[data-tooltip]')) {
+                this.currentTarget = null;
+                this.hideTooltip();
+            }
+        });
+    }
+
+    scheduleShow(element) {
+        clearTimeout(this.showTimeout);
+        this.showTimeout = setTimeout(() => {
+            this.showTooltip(element);
+        }, 500);
+    }
+
+    showTooltip(element) {
+        this.hoveredElement = element;
+        const text = element.getAttribute('data-tooltip');
+        if (!text) return;
+
+        this.tooltipEl.innerText = text;
+        
+        // Ensure tooltip has content to calculate height
+        this.tooltipEl.classList.remove('visible');
+        
+        const rect = element.getBoundingClientRect();
+        const tooltipRect = this.tooltipEl.getBoundingClientRect();
+        
+        // Default position: above the element
+        let top = rect.top - tooltipRect.height - 8;
+        let left = rect.left + (rect.width / 2);
+        
+        // Check if there's enough space above, if not put it below
+        if (top < 10) {
+            top = rect.bottom + 8;
+            this.tooltipEl.style.transform = 'translate(-50%, -4px) scale(0.95)'; // start slightly above for bottom placement
+        } else {
+            this.tooltipEl.style.transform = 'translate(-50%, 4px) scale(0.95)'; // start slightly below for top placement
+        }
+
+        this.tooltipEl.style.top = `${top}px`;
+        this.tooltipEl.style.left = `${left}px`;
+        
+        // Add visible class to trigger CSS transition
+        requestAnimationFrame(() => {
+            if (this.hoveredElement === element) {
+                this.tooltipEl.classList.add('visible');
+                
+                // Adjust if bleeding off screen horizontally
+                const updatedRect = this.tooltipEl.getBoundingClientRect();
+                if (updatedRect.left < 10) {
+                    this.tooltipEl.style.left = `${updatedRect.width / 2 + 10}px`;
+                } else if (updatedRect.right > window.innerWidth - 10) {
+                    this.tooltipEl.style.left = `${window.innerWidth - (updatedRect.width / 2) - 10}px`;
+                }
+            }
+        });
+    }
+
+    hideTooltip() {
+        clearTimeout(this.showTimeout);
+        this.hoveredElement = null;
+        this.tooltipEl.classList.remove('visible');
+    }
+}
+
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', () => {
+    window.tooltipManager = new TooltipManager();
+});
