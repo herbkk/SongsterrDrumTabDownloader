@@ -74,6 +74,42 @@ let batchQueueCompleted = 0;
 let isBatchProcessing = false;
 let isBatchModeUI = false;
 
+// Resize Observer for consistent OSMD rendering
+let osmdResizeObserver = null;
+
+function setupOSMDResizeObserver() {
+    const wrapper = document.querySelector('.print-wrapper');
+    const container = document.getElementById('osmd-container');
+    
+    if (!wrapper || !container) return;
+    if (osmdResizeObserver) osmdResizeObserver.disconnect();
+    
+    osmdResizeObserver = new ResizeObserver(entries => {
+        for (let entry of entries) {
+            const wrapperWidth = entry.contentRect.width;
+            if (wrapperWidth === 0) continue;
+            
+            if (wrapperWidth < 1024) {
+                // Force container layout to 1024px
+                container.style.width = '1024px';
+                container.style.minWidth = '1024px';
+                // Visually zoom down to fit wrapper width
+                container.style.zoom = wrapperWidth / 1024;
+            } else {
+                // Normal responsive layout above 1024px
+                container.style.width = '100%';
+                container.style.minWidth = '1024px';
+                container.style.zoom = 1;
+            }
+        }
+    });
+    
+    osmdResizeObserver.observe(wrapper);
+}
+
+// Initialize Observer
+document.addEventListener('DOMContentLoaded', setupOSMDResizeObserver);
+
 // Format handling
 function updateFormatSelection(radio) {
     currentFormat = radio.value;
