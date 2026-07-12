@@ -267,6 +267,11 @@ body { background-color: var(--bg-body); color: var(--text-primary); }
 
 /* ─── Custom Scrollbar ───────────────────────────────────────────────────── */
 
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--accent-1-rgb), 0.5) var(--scrollbar-track);
+}
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
@@ -277,12 +282,12 @@ body { background-color: var(--bg-body); color: var(--text-primary); }
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
+  background: rgba(var(--accent-1-rgb), 0.25);
   border-radius: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--accent-1-rgb), 0.5);
+  background: rgba(var(--accent-1-rgb), 0.6);
 }
 
 
