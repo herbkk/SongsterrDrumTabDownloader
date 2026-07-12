@@ -174,12 +174,16 @@ def download_drum_track(song_url: str = None, song_id: int = None,
             artist = metadata.get("artist", artist)
             title = metadata.get("title", title)
             
-            # Find the drum track's partId (which corresponds to the JSON filename)
+            drum_tracks = []
+            # Find all drum tracks
             for i, track in enumerate(metadata.get("tracks", [])):
                 inst_id = track.get("instrumentId", 0)
-                if inst_id == DRUM_INSTRUMENT_ID:
-                    drum_track_id = track.get("partId", i)
-                    break
+                if inst_id == DRUM_INSTRUMENT_ID or "drum" in track.get("title", "").lower() or "perc" in track.get("title", "").lower():
+                    drum_tracks.append({
+                        "partId": track.get("partId", i),
+                        "title": track.get("title", f"Drum Track {i}"),
+                        "instrument": track.get("instrument", "Drums")
+                    })
 
         # Give the browser a little more time to make the CDN requests
         time.sleep(1.5)
@@ -190,8 +194,22 @@ def download_drum_track(song_url: str = None, song_id: int = None,
         if not cdn_urls:
             return {"success": False, "error": "No track data found in network logs. The page may not have loaded correctly."}
             
-        # If we couldn't find the drum track ID from metadata, we might fail here
-        # But we can try to guess or use the first one if there's only one
+        if len(drum_tracks) > 1:
+            # We need user input to select the track
+            return {
+                "success": False,
+                "requires_track_selection": True,
+                "tracks": drum_tracks,
+                "cdn_urls": cdn_urls,
+                "artist": artist,
+                "title": title
+            }
+        elif len(drum_tracks) == 1:
+            drum_track_id = drum_tracks[0]["partId"]
+        else:
+            # Try to guess or fallback
+            drum_track_id = 0
+
         target_url = None
         
         if drum_track_id is not None:

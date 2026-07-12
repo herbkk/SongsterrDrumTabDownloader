@@ -499,6 +499,9 @@ function listenToProgress(taskId) {
         } else if (data.status === 'requires_mapping') {
             currentEventSource.close();
             showMappingUI(data.unmapped_frets, data.song_url || currentDownloadUrl);
+        } else if (data.status === 'requires_track_selection') {
+            currentEventSource.close();
+            showTrackSelectionUI(data.tracks);
         } else if (data.status === 'error') {
             currentEventSource.close();
             showError(data.error || 'Download failed');
@@ -554,7 +557,70 @@ function showMappingUI(frets, songUrl) {
         };
     });
 
-    currentInterceptMapper = new VisualMapper(container, initialMap, false, songUrl);
+currentInterceptMapper = new VisualMapper(container, initialMap, false, songUrl);
+}
+
+function showTrackSelectionUI(tracks) {
+    const mainCard = document.querySelector('main.glass-card');
+    mainCard.classList.remove('max-w-6xl');
+    mainCard.classList.add('max-w-3xl');
+
+    panels.progress.classList.add('hidden');
+    panels.progress.classList.remove('flex');
+    panels.progress.parentElement.classList.remove('progress-pulse');
+
+    const panelTrackSelection = document.getElementById('panel-track-selection');
+    panelTrackSelection.classList.remove('hidden');
+    panelTrackSelection.classList.add('flex');
+
+    const listContainer = document.getElementById('track-selection-list');
+    let html = '';
+    tracks.forEach(t => {
+        html += `
+            <div class="p-4 border-b border-subtle hover:bg-surface-hover cursor-pointer transition-colors flex justify-between items-center group" onclick="submitTrackSelection(${t.partId})">
+                <div>
+                    <div class="text-primary font-medium group-hover:text-accent transition-colors">${t.title}</div>
+                    <div class="text-xs text-secondary mt-1">Instrument: ${t.instrument} | Part ID: ${t.partId}</div>
+                </div>
+                <i data-feather="chevron-right" class="w-5 h-5 text-muted group-hover:text-accent"></i>
+            </div>
+        `;
+    });
+    listContainer.innerHTML = html;
+    feather.replace();
+    
+    document.getElementById('cancel-track-btn').onclick = () => {
+        panelTrackSelection.classList.add('hidden');
+        panelTrackSelection.classList.remove('flex');
+        resetUI();
+    };
+}
+
+async function submitTrackSelection(partId) {
+    const panelTrackSelection = document.getElementById('panel-track-selection');
+    panelTrackSelection.classList.add('hidden');
+    panelTrackSelection.classList.remove('flex');
+
+    panels.progress.classList.remove('hidden');
+    panels.progress.classList.add('flex');
+    panels.progress.parentElement.classList.add('progress-pulse');
+    progressStep.innerText = 'Resuming download...';
+
+    try {
+        const res = await fetch('/api/download/resume_track', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ taskId: currentTaskId, partId: partId })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to resume download');
+
+        listenToProgress(currentTaskId);
+    } catch (err) {
+        showError(err.message);
+        resetUI();
+    }
 }
 
 async function submitMapping() {

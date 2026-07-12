@@ -281,6 +281,28 @@
                     </div>
                 </div>
 
+                <!-- Track Selection Panel (Overlay) -->
+                <div id="panel-track-selection" class="hidden flex-col items-center justify-center py-4 space-y-4">
+                    <div class="text-center space-y-2 mb-2">
+                        <h3 class="text-lg font-medium text-accent flex items-center justify-center">
+                            <i data-feather="list" class="w-5 h-5 mr-2"></i>
+                            Select Drum Track
+                        </h3>
+                        <p class="text-sm text-secondary">This song contains multiple drum/percussion tracks. Please select which one you'd like to download.</p>
+                    </div>
+
+                    <div class="w-full max-w-md bg-surface border border-base rounded-xl overflow-hidden" id="track-selection-list">
+                        <!-- Tracks injected here -->
+                    </div>
+
+                    <div class="flex justify-center w-full max-w-md mt-4">
+                        <button id="cancel-track-btn"
+                            class="px-5 py-2.5 bg-surface-hover hover:bg-slate-700/80 text-primary rounded-lg font-medium transition-colors border border-base shadow-sm hover:shadow">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Mapping Panel (Overlay) -->
                 <div id="panel-mapping" class="hidden flex-col items-center justify-center py-4 space-y-4">
                     <div class="text-center space-y-2 mb-2">

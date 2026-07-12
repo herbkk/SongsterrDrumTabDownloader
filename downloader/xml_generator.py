@@ -83,7 +83,7 @@ def duration_to_ticks(dur_array) -> int:
     
     return int((num * 4 * DIVISIONS) / den)
 
-def get_note_type_info(dur_array):
+def get_note_type_info(dur_array, tuplet=None):
     """Convert duration array to MusicXML note type string and dot count."""
     if not dur_array or len(dur_array) != 2:
         return "quarter", 0
@@ -98,12 +98,22 @@ def get_note_type_info(dur_array):
         
     ratio = num / den
     
-    if ratio >= 1.0: type_str = "whole"
-    elif ratio >= 0.5: type_str = "half"
-    elif ratio >= 0.25: type_str = "quarter"
-    elif ratio >= 0.125: type_str = "eighth"
-    elif ratio >= 0.0625: type_str = "16th"
-    elif ratio >= 0.03125: type_str = "32nd"
+    if tuplet == 3:
+        ratio = ratio * (3 / 2)
+    elif tuplet == 5:
+        ratio = ratio * (5 / 4)
+    elif tuplet == 6:
+        ratio = ratio * (6 / 4)
+    elif tuplet == 7:
+        ratio = ratio * (7 / 4)
+        
+    # Add a tiny epsilon for float comparisons
+    if ratio >= 0.9: type_str = "whole"
+    elif ratio >= 0.45: type_str = "half"
+    elif ratio >= 0.22: type_str = "quarter"
+    elif ratio >= 0.11: type_str = "eighth"
+    elif ratio >= 0.05: type_str = "16th"
+    elif ratio >= 0.025: type_str = "32nd"
     else: type_str = "64th"
     
     return type_str, dots
@@ -424,8 +434,12 @@ class MusicXMLGenerator:
         for beat in beats:
             is_rest = beat.get("rest", False)
             dur_array = beat.get("duration", [1, 4])
+            tuplet_val = beat.get("tuplet")
+            tuplet_start = beat.get("tupletStart")
+            tuplet_stop = beat.get("tupletStop")
+            
             ticks = duration_to_ticks(dur_array)
-            note_type, dots = get_note_type_info(dur_array)
+            note_type, dots = get_note_type_info(dur_array, tuplet_val)
             
             if is_rest:
                 note = ET.SubElement(measure_elem, "note")
@@ -435,6 +449,20 @@ class MusicXMLGenerator:
                 ET.SubElement(note, "type").text = note_type
                 for _ in range(dots):
                     ET.SubElement(note, "dot")
+                    
+                if tuplet_val:
+                    normal_notes = 2
+                    if tuplet_val in (5, 6, 7): normal_notes = 4
+                    tm = ET.SubElement(note, "time-modification")
+                    ET.SubElement(tm, "actual-notes").text = str(tuplet_val)
+                    ET.SubElement(tm, "normal-notes").text = str(normal_notes)
+                    
+                if tuplet_start or tuplet_stop:
+                    notations = ET.SubElement(note, "notations")
+                    if tuplet_start:
+                        ET.SubElement(notations, "tuplet", type="start", bracket="yes")
+                    if tuplet_stop:
+                        ET.SubElement(notations, "tuplet", type="stop")
                 continue
 
             notes = beat.get("notes", [])
@@ -488,9 +516,21 @@ class MusicXMLGenerator:
                     ET.SubElement(note_elem, "instrument", id=f"P1-I{fret}")
                 
                 ET.SubElement(note_elem, "voice").text = "1"
-                ET.SubElement(note_elem, "type").text = note_type
+                
+                type_elem = ET.SubElement(note_elem, "type")
+                type_elem.text = note_type
+                if n.get("ghost"):
+                    type_elem.set("size", "cue")
+                    
                 for _ in range(dots):
                     ET.SubElement(note_elem, "dot")
+                    
+                if tuplet_val:
+                    normal_notes = 2
+                    if tuplet_val in (5, 6, 7): normal_notes = 4
+                    tm = ET.SubElement(note_elem, "time-modification")
+                    ET.SubElement(tm, "actual-notes").text = str(tuplet_val)
+                    ET.SubElement(tm, "normal-notes").text = str(normal_notes)
                 
                 # Force stems up for all drums to ensure uniform beam height
                 ET.SubElement(note_elem, "stem").text = "up"
@@ -527,28 +567,40 @@ class MusicXMLGenerator:
                 articulations = []
                 if n.get("accentuated") == 1 or n.get("accent"): articulations.append("accent")
                 if n.get("accentuated") == 2 or n.get("heavyAccent") or n.get("marcato"): articulations.append("strong-accent")
+                if n.get("staccato"): articulations.append("staccato")
                 
                 slur_start = n.get("slur") == "start" or n.get("legato") == "start"
                 slur_stop = n.get("slur") == "stop" or n.get("legato") == "stop"
                 tie_start = n.get("tieStart")
                 tie_stop = n.get("tie")
+                fermata = n.get("fermata")
+                roll = n.get("roll") or n.get("tremolo")
 
-                if articulations or slur_start or slur_stop or tie_start or tie_stop:
+                if articulations or slur_start or slur_stop or tie_start or tie_stop or tuplet_start or tuplet_stop or fermata or roll:
                     notations = note_elem.find("notations")
                     if notations is None:
                         notations = ET.SubElement(note_elem, "notations")
                     
                     if tie_start:
                         ET.SubElement(notations, "tied", type="start")
-                        ET.SubElement(notations, "slur", type="start", number="1")
                     if tie_stop:
                         ET.SubElement(notations, "tied", type="stop")
-                        ET.SubElement(notations, "slur", type="stop", number="1")
                     
                     if slur_start:
                         ET.SubElement(notations, "slur", type="start", number="1")
                     if slur_stop:
                         ET.SubElement(notations, "slur", type="stop", number="1")
+                        
+                    # Tuplets
+                    # Only output tuplet notations on the FIRST note of a chord to avoid duplicate brackets
+                    if not is_chord:
+                        if tuplet_start:
+                            ET.SubElement(notations, "tuplet", type="start", bracket="yes")
+                        if tuplet_stop:
+                            ET.SubElement(notations, "tuplet", type="stop")
+                            
+                    if fermata:
+                        ET.SubElement(notations, "fermata")
                         
                     if articulations:
                         art_elem = notations.find("articulations")
@@ -556,9 +608,19 @@ class MusicXMLGenerator:
                             art_elem = ET.SubElement(notations, "articulations")
                         for art in articulations:
                             if art == "strong-accent":
-                                ET.SubElement(art_elem, "strong-accent", type="up")
+                                ET.SubElement(art_elem, "strong-accent", placement="above", type="up")
+                            elif art == "accent":
+                                ET.SubElement(art_elem, "accent", placement="above")
+                            elif art == "staccato":
+                                ET.SubElement(art_elem, "staccato", placement="above")
                             else:
                                 ET.SubElement(art_elem, art)
+                                
+                    if roll:
+                        orn_elem = notations.find("ornaments")
+                        if orn_elem is None:
+                            orn_elem = ET.SubElement(notations, "ornaments")
+                        ET.SubElement(orn_elem, "tremolo", type="single").text = "3"
 
                 # Tie handling (for playback)
                 if tie_start:

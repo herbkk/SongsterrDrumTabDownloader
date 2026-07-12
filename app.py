@@ -173,6 +173,39 @@ def api_download_resume():
     
     return jsonify({"success": True})
 
+@app.route("/api/download/resume_track", methods=["POST"])
+def api_download_resume_track():
+    """
+    Resume a download task after providing the selected track ID.
+    JSON body:
+        taskId: str
+        partId: int
+    """
+    data = request.get_json(force=True, silent=True) or {}
+    task_id = data.get("taskId")
+    part_id = data.get("partId")
+
+    if not task_id or task_id not in tasks:
+        return jsonify({"error": "Invalid or missing taskId"}), 400
+        
+    if part_id is None:
+        return jsonify({"error": "Missing partId"}), 400
+        
+    task = tasks[task_id]
+    if task["status"] != "requires_track_selection":
+        return jsonify({"error": "Task is not in requires_track_selection state"}), 400
+        
+    task["selected_part_id"] = int(part_id)
+    
+    # Resume background task
+    thread = threading.Thread(
+        target=_run_download_task_resume_track,
+        args=(task_id,),
+        daemon=True
+    )
+    thread.start()
+    
+    return jsonify({"success": True})
 
 @app.route("/api/status/<task_id>")
 def api_status(task_id):
@@ -203,6 +236,10 @@ def api_status(task_id):
             elif task["status"] == "requires_mapping":
                 event["unmapped_frets"] = task["unmapped_frets"]
                 event["song_url"] = task.get("song_url")
+                yield f"data: {json.dumps(event)}\n\n"
+                break
+            elif task["status"] == "requires_track_selection":
+                event["tracks"] = task["tracks"]
                 yield f"data: {json.dumps(event)}\n\n"
                 break
             else:
@@ -248,9 +285,19 @@ def _run_download_task(task_id: str, song_url: str, song_id: int, output_format:
             progress_callback=progress_callback,
         )
 
-        if not result["success"]:
-            task["status"] = "error"
-            task["error"] = result.get("error", "Unknown download error")
+        if not result.get("success"):
+            if result.get("requires_track_selection"):
+                task["status"] = "requires_track_selection"
+                task["tracks"] = result.get("tracks", [])
+                task["cdn_urls"] = result.get("cdn_urls", [])
+                task["artist"] = result.get("artist")
+                task["title"] = result.get("title")
+                task["output_format"] = output_format
+                task["global_mapping"] = global_mapping
+                task["bpm"] = bpm
+            else:
+                task["status"] = "error"
+                task["error"] = result.get("error", "Unknown download error")
             return
 
         track_data = result["data"]
@@ -280,6 +327,62 @@ def _run_download_task(task_id: str, song_url: str, song_id: int, output_format:
 
     except Exception as e:
         logger.exception(f"Task {task_id} failed")
+        task["status"] = "error"
+        task["error"] = str(e)
+
+
+def _run_download_task_resume_track(task_id: str):
+    """Resume download after track selection."""
+    task = tasks[task_id]
+    task["status"] = "running"
+    
+    def progress_callback(step, pct):
+        task["step"] = step
+        task["progress"] = pct
+
+    try:
+        drum_track_id = task["selected_part_id"]
+        cdn_urls = task["cdn_urls"]
+        target_url = None
+        
+        suffix = f"/{drum_track_id}.json"
+        for url in cdn_urls:
+            if url.endswith(suffix):
+                target_url = url
+                break
+                
+        if not target_url:
+            raise ValueError(f"Drum track (id={drum_track_id}) not found among captured URLs.")
+            
+        progress_callback("Downloading selected track...", 0.75)
+        import requests
+        resp = requests.get(target_url, timeout=15) # HEADERS not easily available here, but standard get works for cloudfront
+        resp.raise_for_status()
+        track_data = resp.json()
+        
+        artist = task["artist"]
+        title = task["title"]
+        global_mapping = task.get("global_mapping", {})
+        output_format = task.get("output_format", "musicxml")
+        bpm = task.get("bpm")
+        
+        # Check for unmapped frets
+        unmapped = get_unmapped_frets(track_data, custom_mapping=global_mapping)
+        if unmapped:
+            for u in unmapped:
+                preview_xml = generate_measure_preview_xml(track_data, u["first_measure"], highlight_fret=u["fret"])
+                u["preview_xml"] = preview_xml
+
+            task["status"] = "requires_mapping"
+            task["unmapped_frets"] = unmapped
+            task["track_data"] = track_data
+            return
+
+        # No unmapped frets, proceed directly to generation
+        _proceed_with_generation(task_id, track_data, artist, title, output_format, custom_mapping=global_mapping, bpm=bpm)
+
+    except Exception as e:
+        logger.exception(f"Task {task_id} resume track failed")
         task["status"] = "error"
         task["error"] = str(e)
 
