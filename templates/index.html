@@ -476,11 +476,16 @@
         </main>
 
         <!-- Footer / Legal Notice -->
-        <footer class="mt-auto pt-8 pb-4">
-            <div class="legal-footer">
+        <footer class="mt-auto pt-8 pb-4 flex flex-col items-center">
+            <div class="legal-footer text-center">
                 <strong>Legal Notice:</strong> This tool is for personal use only.
                 Songsterr's Terms of Service restrict automated access. Tabs should only be used for personal practice and learning.
             </div>
+            {% if build_info %}
+            <div class="text-[11px] text-secondary/40 font-mono mt-3 text-center">
+                {{ build_info }}
+            </div>
+            {% endif %}
         </footer>
 
     </div>

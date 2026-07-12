@@ -33,6 +33,35 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
+def get_build_info():
+    """Retrieve build date from Docker build_info.txt, or local Git hash if available."""
+    info_path = os.path.join(BASE_DIR, "build_info.txt")
+    if os.path.exists(info_path):
+        try:
+            with open(info_path, "r", encoding="utf-8") as f:
+                return f.read().strip()
+        except Exception:
+            pass
+            
+    # Fallback for local development
+    try:
+        git_dir = os.path.join(BASE_DIR, ".git")
+        if os.path.exists(git_dir):
+            head_path = os.path.join(git_dir, "HEAD")
+            with open(head_path, "r", encoding="utf-8") as f:
+                head_content = f.read().strip()
+            if head_content.startswith("ref: "):
+                ref_path = os.path.join(git_dir, head_content.split(" ")[1])
+                with open(ref_path, "r", encoding="utf-8") as f:
+                    commit_hash = f.read().strip()[:7]
+                    return f"Local Dev ({commit_hash})"
+    except Exception:
+        pass
+        
+    return "Local Dev Mode"
+
+BUILD_INFO = get_build_info()
+
 # In-memory task status store (keyed by task_id)
 tasks = {}
 
@@ -42,7 +71,7 @@ tasks = {}
 @app.route("/")
 def index():
     """Serve the main UI."""
-    return render_template("index.html")
+    return render_template("index.html", build_info=BUILD_INFO)
 
 
 @app.route("/api/search")
