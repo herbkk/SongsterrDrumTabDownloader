@@ -596,7 +596,7 @@ async function showSuccess(result) {
         if (currentFormat === 'pdf') {
             progressStep.innerText = 'Ghost rendering PDF...';
             try {
-                await generateGhostPDF(result.xml_string, `${result.artist} - ${result.title}`);
+                await generateGhostPDF(result.xml_string, result.artist, result.title);
             } catch (err) {
                 console.error("Ghost PDF Error", err);
                 showError("Failed to render PDF for " + result.title);
@@ -623,7 +623,10 @@ async function showSuccess(result) {
     panels.result.classList.remove('hidden');
     panels.result.classList.add('flex');
 
-    document.getElementById('result-song-name').innerText = `${result.artist} - ${result.title}`;
+    const titleEl = document.getElementById('result-song-name');
+    titleEl.innerText = `${result.artist} - ${result.title}`;
+    titleEl.dataset.artist = result.artist;
+    titleEl.dataset.title = result.title;
     document.getElementById('result-download-link').href = result.downloadUrl;
 
     // Render OSMD
@@ -700,8 +703,19 @@ async function exportOSMDPDF() {
             pdf.addImage(imageDataUrl, 'JPEG', 0, 0, drawWidth, drawHeight);
         }
 
-        const songName = document.getElementById('result-song-name').innerText || 'Drum Tab';
-        pdf.save(`${songName}.pdf`);
+        const titleEl = document.getElementById('result-song-name');
+        const artist = titleEl.dataset.artist || 'Unknown Artist';
+        const title = titleEl.dataset.title || 'Drum Tab';
+
+        pdf.setProperties({
+            title: title,
+            author: artist,
+            subject: 'Drum Tab',
+            keywords: 'Drums, Drum Tab, Songsterr',
+            creator: 'SongsterrDrumTabDownloader'
+        });
+
+        pdf.save(`${artist} - ${title}.pdf`);
     } catch (err) {
         console.error("PDF Export Error:", err);
         showError("Failed to generate PDF. Check console for details.");
@@ -712,7 +726,7 @@ async function exportOSMDPDF() {
     }
 }
 
-async function generateGhostPDF(xmlString, songName) {
+async function generateGhostPDF(xmlString, artist, title) {
     const ghostContainer = document.createElement('div');
     ghostContainer.style.position = 'absolute';
     ghostContainer.style.left = '-9999px';
@@ -742,7 +756,16 @@ async function generateGhostPDF(xmlString, songName) {
             const drawHeight = pageWidth * ratio;
             pdf.addImage(imageDataUrl, 'JPEG', 0, 0, pageWidth, drawHeight);
         }
-        pdf.save(`${songName}.pdf`);
+
+        pdf.setProperties({
+            title: title || 'Drum Tab',
+            author: artist || 'Unknown Artist',
+            subject: 'Drum Tab',
+            keywords: 'Drums, Drum Tab, Songsterr',
+            creator: 'SongsterrDrumTabDownloader'
+        });
+
+        pdf.save(`${artist} - ${title}.pdf`);
     } finally {
         document.body.removeChild(ghostContainer);
     }

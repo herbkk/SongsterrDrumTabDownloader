@@ -111,6 +111,13 @@ class DrumPDFRenderer:
         self.page_num = 1
         self.y_cursor = PAGE_HEIGHT - MARGIN_TOP
 
+        # PDF Metadata for ForScore
+        self.c.setTitle(self.title)
+        self.c.setAuthor(self.artist)
+        self.c.setSubject("Drum Tab")
+        self.c.setKeywords("Drums, Drum Tab, Songsterr")
+        self.c.setCreator("SongsterrDrumTabDownloader")
+
         # Colors
         self.bg_color = white
         self.fg_color = black
