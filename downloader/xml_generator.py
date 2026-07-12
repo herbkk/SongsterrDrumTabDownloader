@@ -212,11 +212,12 @@ def get_unmapped_frets(track_data: dict, custom_mapping: dict = None) -> list:
 
 
 class MusicXMLGenerator:
-    def __init__(self, artist: str, title: str, custom_mapping: dict = None, bpm: int = None, disable_fallback_colors: bool = False):
+    def __init__(self, artist: str, title: str, custom_mapping: dict = None, bpm: int = None, disable_fallback_colors: bool = False, stem_direction: str = "up"):
         self.artist = artist
         self.title = title
         self.bpm = bpm
         self.disable_fallback_colors = disable_fallback_colors
+        self.stem_direction = stem_direction
         
         self.mapping = DRUM_MAPPING.copy()
         if custom_mapping:
@@ -491,7 +492,10 @@ class MusicXMLGenerator:
                         ET.SubElement(grace_elem, "instrument", id=f"P1-I{fret}")
                     ET.SubElement(grace_elem, "voice").text = "1"
                     ET.SubElement(grace_elem, "type").text = "16th"
-                    ET.SubElement(grace_elem, "stem").text = "up"
+                    if self.stem_direction == "up":
+                        ET.SubElement(grace_elem, "stem").text = "up"
+                    elif self.stem_direction == "down":
+                        ET.SubElement(grace_elem, "stem").text = "down"
                     if "notehead" in mapping:
                         ET.SubElement(grace_elem, "notehead").text = mapping["notehead"]
                 
@@ -532,8 +536,11 @@ class MusicXMLGenerator:
                     ET.SubElement(tm, "actual-notes").text = str(tuplet_val)
                     ET.SubElement(tm, "normal-notes").text = str(normal_notes)
                 
-                # Force stems up for all drums to ensure uniform beam height
-                ET.SubElement(note_elem, "stem").text = "up"
+                # Stem direction
+                if self.stem_direction == "up":
+                    ET.SubElement(note_elem, "stem").text = "up"
+                elif self.stem_direction == "down":
+                    ET.SubElement(note_elem, "stem").text = "down"
                 
                 # Notehead
                 if "notehead" in mapping:
@@ -610,7 +617,7 @@ class MusicXMLGenerator:
                             if art == "strong-accent":
                                 ET.SubElement(art_elem, "strong-accent", placement="above", type="up")
                             elif art == "accent":
-                                ET.SubElement(art_elem, "accent", placement="above")
+                                ET.SubElement(art_elem, "accent", placement="above", **{"default-y": "15"})
                             elif art == "staccato":
                                 ET.SubElement(art_elem, "staccato", placement="above")
                             else:
@@ -631,11 +638,11 @@ class MusicXMLGenerator:
         # Apply auto-beaming after all notes are added to the measure
         apply_auto_beaming(measure_elem, DIVISIONS)
 
-def generate_musicxml(track_data: dict, output_path: str, artist: str = "Unknown", title: str = "Unknown", custom_mapping: dict = None, bpm: int = None) -> str:
+def generate_musicxml(track_data: dict, output_path: str, artist: str = "Unknown", title: str = "Unknown", custom_mapping: dict = None, bpm: int = None, stem_direction: str = "up") -> str:
     """Convenience function to generate MusicXML."""
     if output_path is not None:
         os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-    generator = MusicXMLGenerator(artist, title, custom_mapping, bpm)
+    generator = MusicXMLGenerator(artist, title, custom_mapping, bpm, stem_direction=stem_direction)
     return generator.generate(track_data, output_path)
 
 def generate_measure_preview_xml(track_data: dict, measure_index: int, highlight_fret: int = None) -> str:

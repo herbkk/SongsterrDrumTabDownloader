@@ -80,15 +80,15 @@ let osmdResizeObserver = null;
 function setupOSMDResizeObserver() {
     const wrapper = document.querySelector('.print-wrapper');
     const container = document.getElementById('osmd-container');
-    
+
     if (!wrapper || !container) return;
     if (osmdResizeObserver) osmdResizeObserver.disconnect();
-    
+
     osmdResizeObserver = new ResizeObserver(entries => {
         for (let entry of entries) {
             const wrapperWidth = entry.contentRect.width;
             if (wrapperWidth === 0) continue;
-            
+
             if (wrapperWidth < 1024) {
                 // Force container layout to 1024px
                 container.style.width = '1024px';
@@ -103,7 +103,7 @@ function setupOSMDResizeObserver() {
             }
         }
     });
-    
+
     osmdResizeObserver.observe(wrapper);
 }
 
@@ -218,6 +218,7 @@ function resetGlobalMapping() {
         localStorage.removeItem('style_draw_title');
         localStorage.removeItem('style_draw_measures');
         localStorage.removeItem('style_zoom');
+        localStorage.removeItem('style_force_stems_up');
         globalDrumMapping = {};
         const container = document.getElementById('global-mapping-container');
         container.innerHTML = '';
@@ -229,6 +230,7 @@ function resetGlobalMapping() {
         document.getElementById('style-page-format').value = 'A4_P';
         document.getElementById('style-draw-title').checked = true;
         document.getElementById('style-draw-measures').checked = true;
+        document.getElementById('style-stem-direction').value = 'up';
         document.getElementById('style-zoom').value = '0.6';
         document.getElementById('style-zoom-val').innerText = '0.6';
 
@@ -416,6 +418,7 @@ function processNextBatchItem() {
 async function startDownload(payload, isBatchContinuation = false) {
     payload.format = currentFormat;
     payload.global_mapping = globalDrumMapping;
+    payload.stem_direction = document.getElementById('style-stem-direction')?.value || 'up';
 
     const bpmVal = document.getElementById('bpm-input')?.value;
     if (bpmVal) payload.bpm = parseInt(bpmVal, 10);
@@ -557,7 +560,7 @@ function showMappingUI(frets, songUrl) {
         };
     });
 
-currentInterceptMapper = new VisualMapper(container, initialMap, false, songUrl);
+    currentInterceptMapper = new VisualMapper(container, initialMap, false, songUrl);
 }
 
 function showTrackSelectionUI(tracks) {
@@ -588,7 +591,7 @@ function showTrackSelectionUI(tracks) {
     });
     listContainer.innerHTML = html;
     feather.replace();
-    
+
     document.getElementById('cancel-track-btn').onclick = () => {
         panelTrackSelection.classList.add('hidden');
         panelTrackSelection.classList.remove('flex');
@@ -741,6 +744,11 @@ async function showSuccess(result) {
         songsterrLink.classList.remove('flex');
     }
 
+    updateStemButtonIcon();
+
+    // Save string for stem toggling
+    window.currentXmlString = result.xml_string;
+
     // Render OSMD
     const osmdContainer = document.getElementById('osmd-container');
     osmdContainer.innerHTML = ''; // Clear previous
@@ -786,7 +794,7 @@ async function exportOSMDPDF() {
 
     const btn = document.getElementById('btn-save-pdf');
     const originalText = btn.innerHTML;
-    btn.innerHTML = `<i data-feather="loader" class="w-4 h-4 mr-2 animate-spin"></i> Generating...`;
+    btn.innerHTML = `<span><i data-feather="loader" class="w-4 h-4 mr-2 animate-spin"></i> Generating...</span>`;
     btn.disabled = true;
     feather.replace();
 
@@ -962,29 +970,177 @@ window.applyDarkThemeEngravingRules = function (osmd) {
 }
 
 function toggleOSMDDarkMode() {
-    window.osmdDarkModeGlobal = !window.osmdDarkModeGlobal;
-    localStorage.setItem('osmd_dark_mode', window.osmdDarkModeGlobal);
+    const btn = document.querySelector('.osmd-toggle');
 
-    updateDarkModeIcon();
+    runWithOSMDLoader(btn, () => {
+        window.osmdDarkModeGlobal = !window.osmdDarkModeGlobal;
+        localStorage.setItem('osmd_dark_mode', window.osmdDarkModeGlobal);
 
-    if (osmdInstance && !panels.result.classList.contains('hidden')) {
-        osmdInstance.setOptions({
-            darkMode: window.osmdDarkModeGlobal,
-            pageBackgroundColor: window.osmdDarkModeGlobal ? window.osmdDarkBg : "#FFFFFF"
-        });
+        if (osmdInstance && !panels.result.classList.contains('hidden')) {
+            osmdInstance.setOptions({
+                darkMode: window.osmdDarkModeGlobal,
+                pageBackgroundColor: window.osmdDarkModeGlobal ? window.osmdDarkBg : "#FFFFFF"
+            });
 
-        if (window.osmdDarkModeGlobal) {
-            window.applyDarkThemeEngravingRules(osmdInstance);
-        } else {
-            // Unset or rely on OSMD's darkMode to reset colors? OSMD handles false partially, but we must clear our overrides
-            window.applyDefaultLightEngravingRules(osmdInstance);
+            if (window.osmdDarkModeGlobal) {
+                window.applyDarkThemeEngravingRules(osmdInstance);
+            } else {
+                window.applyDefaultLightEngravingRules(osmdInstance);
+            }
+
+            osmdInstance.render();
         }
 
-        osmdInstance.render();
+        if (currentInterceptMapper && !panels.mapping.classList.contains('hidden')) {
+            currentInterceptMapper.updateDarkMode(window.osmdDarkModeGlobal);
+        }
+    }, () => {
+        updateDarkModeIcon();
+    });
+}
+
+function updateStemButtonIcon() {
+    const dir = document.getElementById('style-stem-direction')?.value || 'up';
+    const btn = document.getElementById('btn-toggle-stem');
+    const iconUp = document.getElementById('icon-stem-up');
+    const iconDown = document.getElementById('icon-stem-down');
+    const iconAuto = document.getElementById('icon-stem-auto');
+    if (iconUp && iconDown && iconAuto) {
+        iconUp.classList.add('hidden');
+        iconDown.classList.add('hidden');
+        iconAuto.classList.add('hidden');
+
+        if (dir === 'up') {
+            iconUp.classList.remove('hidden');
+            if (btn) btn.title = "Stems Up";
+        } else if (dir === 'down') {
+            iconDown.classList.remove('hidden');
+            if (btn) btn.title = "Stems Down";
+        } else {
+            iconAuto.classList.remove('hidden');
+            if (btn) btn.title = "Stems Auto";
+        }
+    }
+}
+
+/**
+ * Generic utility to show a loading state before a heavy OSMD render task.
+ * @param {HTMLElement} btnElement - Optional button to show a spinner in.
+ * @param {Function} renderCallback - The heavy render function to execute.
+ * @param {Function} onComplete - Optional callback when done.
+ */
+function runWithOSMDLoader(btnElement, renderCallback, onComplete) {
+    const osmdContainer = document.getElementById('osmd-container');
+    if (osmdContainer) {
+        osmdContainer.style.opacity = '0.5';
+        osmdContainer.style.pointerEvents = 'none';
+        osmdContainer.style.transition = 'opacity 0.2s ease-in-out';
     }
 
-    if (currentInterceptMapper && !panels.mapping.classList.contains('hidden')) {
-        currentInterceptMapper.updateDarkMode(window.osmdDarkModeGlobal);
+    let hiddenElements = [];
+    let spinnerContainer = null;
+
+    if (btnElement) {
+        // Hide all SVG and I tags inside the button to preserve text
+        Array.from(btnElement.children).forEach(child => {
+            if (child.tagName.toLowerCase() === 'svg' || child.tagName.toLowerCase() === 'i') {
+                if (!child.classList.contains('hidden')) {
+                    child.classList.add('hidden');
+                    hiddenElements.push(child);
+                }
+            }
+        });
+
+        spinnerContainer = document.createElement('span');
+        spinnerContainer.className = 'flex items-center justify-center';
+
+        const isSmallBtn = btnElement.classList.contains('w-11');
+        const isOsmdToggle = btnElement.classList.contains('osmd-toggle');
+        const spinnerSize = isOsmdToggle ? 'w-4 h-4' : (isSmallBtn ? 'w-5 h-5' : 'w-5 h-5 mx-auto');
+
+        spinnerContainer.innerHTML = `<i data-feather="loader" class="${spinnerSize} animate-spin"></i>`;
+
+        btnElement.insertBefore(spinnerContainer, btnElement.firstChild);
+        feather.replace();
+        btnElement.disabled = true;
+    }
+
+    const finishLoading = () => {
+        if (osmdContainer) {
+            osmdContainer.style.opacity = '1';
+            osmdContainer.style.pointerEvents = 'auto';
+        }
+        if (btnElement) {
+            if (spinnerContainer) spinnerContainer.remove();
+            hiddenElements.forEach(child => child.classList.remove('hidden'));
+            btnElement.disabled = false;
+        }
+        if (onComplete) onComplete();
+    };
+
+    setTimeout(async () => {
+        try {
+            const result = renderCallback();
+            if (result && typeof result.then === 'function') {
+                await result;
+            }
+        } catch (err) {
+            console.error("OSMD Loader Error:", err);
+            showError("An error occurred during rendering.");
+        } finally {
+            finishLoading();
+        }
+    }, 50);
+}
+
+function toggleStemDirection() {
+    const select = document.getElementById('style-stem-direction');
+    const btn = document.getElementById('btn-toggle-stem');
+    if (!select) return;
+
+    if (select.value === 'up') select.value = 'down';
+    else if (select.value === 'down') select.value = 'auto';
+    else select.value = 'up';
+
+    localStorage.setItem('style_stem_direction', select.value);
+
+    if (window.currentXmlString && osmdInstance) {
+        runWithOSMDLoader(btn, () => {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(window.currentXmlString, "text/xml");
+            const notes = xmlDoc.getElementsByTagName("note");
+
+            for (let i = 0; i < notes.length; i++) {
+                const note = notes[i];
+                if (note.getElementsByTagName("rest").length > 0) continue;
+
+                let stem = note.getElementsByTagName("stem")[0];
+                if (select.value === 'auto') {
+                    if (stem) note.removeChild(stem);
+                } else {
+                    if (!stem) {
+                        stem = xmlDoc.createElement("stem");
+                        note.appendChild(stem);
+                    }
+                    stem.textContent = select.value;
+                }
+            }
+
+            const serializer = new XMLSerializer();
+            const newXmlString = serializer.serializeToString(xmlDoc);
+
+            const osmdContainer = document.getElementById('osmd-container');
+            if (osmdContainer) osmdContainer.innerHTML = '';
+            osmdInstance = createConfiguredOSMD(osmdContainer, false);
+
+            return osmdInstance.load(newXmlString).then(() => {
+                osmdInstance.render();
+            });
+        }, () => {
+            updateStemButtonIcon();
+        });
+    } else {
+        updateStemButtonIcon();
     }
 }
 
@@ -1053,11 +1209,22 @@ window.applyDefaultLightEngravingRules = function (osmd) {
             document.getElementById('style-zoom-val').innerText = savedZoom;
         }
 
+        const savedStemsDir = localStorage.getItem('style_stem_direction');
+        if (savedStemsDir !== null) {
+            document.getElementById('style-stem-direction').value = savedStemsDir;
+            // Also clean up old boolean if present
+            localStorage.removeItem('style_force_stems_up');
+        }
+
         // Attach event listeners for PDF settings to persist them
         document.getElementById('style-page-format')?.addEventListener('change', (e) => localStorage.setItem('style_page_format', e.target.value));
         document.getElementById('style-draw-title')?.addEventListener('change', (e) => localStorage.setItem('style_draw_title', e.target.checked));
         document.getElementById('style-draw-measures')?.addEventListener('change', (e) => localStorage.setItem('style_draw_measures', e.target.checked));
         document.getElementById('style-zoom')?.addEventListener('change', (e) => localStorage.setItem('style_zoom', e.target.value));
+        document.getElementById('style-stem-direction')?.addEventListener('change', (e) => {
+            localStorage.setItem('style_stem_direction', e.target.value);
+            updateStemButtonIcon();
+        });
 
     } catch (e) { console.error('Error loading settings', e); }
 })();
@@ -1210,7 +1377,7 @@ function renderLibrary() {
         if (item.customMapping) {
             const count = Object.keys(item.customMapping).length;
             if (count > 0) {
-                badgeHtml = `<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center" title="${count} Custom Drum Mappings Saved"><i data-feather="settings" class="w-3 h-3 mr-1"></i>${count} Mappings</span>`;
+                badgeHtml = `<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent-glow text-accent border border-accent-subtle flex items-center" title="${count} Custom Drum Mappings Saved"><i data-feather="settings" class="w-3 h-3 mr-1"></i>${count} Mappings</span>`;
             }
         }
 

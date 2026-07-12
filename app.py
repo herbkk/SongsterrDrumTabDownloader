@@ -116,6 +116,7 @@ def api_download():
     output_format = data.get("format", "musicxml")
     global_mapping = data.get("global_mapping", {})
     bpm = data.get("bpm", None)
+    stem_direction = data.get("stem_direction", "up")
 
     if not song_url and not song_id:
         return jsonify({"error": "Either 'url' or 'songId' is required"}), 400
@@ -134,7 +135,7 @@ def api_download():
     # Run download in background thread
     thread = threading.Thread(
         target=_run_download_task,
-        args=(task_id, song_url, song_id, output_format, global_mapping, bpm),
+        args=(task_id, song_url, song_id, output_format, global_mapping, bpm, stem_direction),
         daemon=True
     )
     thread.start()
@@ -266,7 +267,7 @@ def serve_download(filename):
 
 # ─── Background Task ───────────────────────────────────────────────────────────
 
-def _run_download_task(task_id: str, song_url: str, song_id: int, output_format: str, global_mapping: dict = None, bpm: int = None):
+def _run_download_task(task_id: str, song_url: str, song_id: int, output_format: str, global_mapping: dict = None, bpm: int = None, stem_direction: str = "up"):
     """
     Background task: download drum track + generate MusicXML (+ convert to PDF).
     """
@@ -295,6 +296,7 @@ def _run_download_task(task_id: str, song_url: str, song_id: int, output_format:
                 task["output_format"] = output_format
                 task["global_mapping"] = global_mapping
                 task["bpm"] = bpm
+                task["stem_direction"] = stem_direction
             else:
                 task["status"] = "error"
                 task["error"] = result.get("error", "Unknown download error")
@@ -319,11 +321,12 @@ def _run_download_task(task_id: str, song_url: str, song_id: int, output_format:
             task["output_format"] = output_format
             task["global_mapping"] = global_mapping
             task["bpm"] = bpm
+            task["stem_direction"] = stem_direction
             task["song_url"] = song_url
             return
 
         # No unmapped frets, proceed directly to generation
-        _proceed_with_generation(task_id, track_data, artist, title, output_format, custom_mapping=global_mapping, bpm=bpm)
+        _proceed_with_generation(task_id, track_data, artist, title, output_format, custom_mapping=global_mapping, bpm=bpm, stem_direction=stem_direction)
 
     except Exception as e:
         logger.exception(f"Task {task_id} failed")
@@ -365,6 +368,7 @@ def _run_download_task_resume_track(task_id: str):
         global_mapping = task.get("global_mapping", {})
         output_format = task.get("output_format", "musicxml")
         bpm = task.get("bpm")
+        stem_direction = task.get("stem_direction", "up")
         
         # Check for unmapped frets
         unmapped = get_unmapped_frets(track_data, custom_mapping=global_mapping)
@@ -401,15 +405,16 @@ def _run_download_task_resume(task_id: str):
         final_mapping = task.get("global_mapping", {}).copy()
         final_mapping.update(task.get("custom_mapping", {}))
         bpm = task.get("bpm", None)
+        stem_direction = task.get("stem_direction", "up")
         
-        _proceed_with_generation(task_id, track_data, artist, title, output_format, custom_mapping=final_mapping, bpm=bpm)
+        _proceed_with_generation(task_id, track_data, artist, title, output_format, custom_mapping=final_mapping, bpm=bpm, stem_direction=stem_direction)
     except Exception as e:
         logger.exception(f"Task {task_id} failed during resume")
         task["status"] = "error"
         task["error"] = str(e)
 
 
-def _proceed_with_generation(task_id: str, track_data: dict, artist: str, title: str, output_format: str, custom_mapping: dict = None, bpm: int = None):
+def _proceed_with_generation(task_id: str, track_data: dict, artist: str, title: str, output_format: str, custom_mapping: dict = None, bpm: int = None, stem_direction: str = "up"):
     task = tasks[task_id]
     
     def progress_callback(step, pct):
@@ -428,7 +433,7 @@ def _proceed_with_generation(task_id: str, track_data: dict, artist: str, title:
         xml_filename = f"{base_filename}.musicxml"
         xml_path = os.path.join(DOWNLOADS_DIR, xml_filename)
 
-        generate_musicxml(track_data, xml_path, artist=artist, title=title, custom_mapping=custom_mapping)
+        generate_musicxml(track_data, xml_path, artist=artist, title=title, custom_mapping=custom_mapping, bpm=bpm, stem_direction=stem_direction)
         
         final_filename = xml_filename
         

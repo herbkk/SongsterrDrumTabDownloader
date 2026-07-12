@@ -352,6 +352,7 @@ body { background-color: var(--bg-body); color: var(--text-primary); }
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
+  z-index: 1;
 }
 
 .btn-accent::before {
@@ -361,6 +362,7 @@ body { background-color: var(--bg-body); color: var(--text-primary); }
   background: linear-gradient(135deg, var(--accent-2), var(--accent-1));
   opacity: 0;
   transition: opacity 0.3s ease;
+  z-index: -1;
 }
 
 .btn-accent:hover::before {

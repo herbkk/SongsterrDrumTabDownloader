@@ -349,6 +349,23 @@
                                 class="hidden items-center justify-center w-11 h-11 border border-base rounded-xl hover:opacity-80 transition-opacity overflow-hidden shrink-0">
                                 <img src="/static/img/Songsterr_Logo.svg" alt="Songsterr" class="w-full h-full object-cover">
                             </a>
+                            <button id="btn-toggle-stem" onclick="toggleStemDirection()" title="Toggle Stem Direction"
+                                class="flex items-center justify-center w-11 h-11 border border-base rounded-xl hover:bg-surface-hover text-secondary hover:text-primary transition-colors shrink-0">
+                                <svg id="icon-stem-up" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="9" cy="17" r="4" />
+                                    <rect x="11.5" y="4" width="1.5" height="14" />
+                                </svg>
+                                <svg id="icon-stem-down" class="w-5 h-5 hidden" viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="15" cy="7" r="4" />
+                                    <rect x="11" y="6" width="1.5" height="14" />
+                                </svg>
+                                <svg id="icon-stem-auto" class="w-5 h-5 hidden" viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="7" cy="17" r="3" />
+                                    <rect x="9" y="6" width="1.5" height="11" />
+                                    <circle cx="17" cy="7" r="3" />
+                                    <rect x="13.5" y="6" width="1.5" height="11" />
+                                </svg>
+                            </button>
                             <a id="result-download-link" href="#" download
                                 class="flex items-center justify-center py-2 px-4 border border-base rounded-xl text-sm font-medium text-primary bg-surface hover:bg-surface-hover transition-colors">
                                 <i data-feather="download" class="w-4 h-4 mr-2"></i>
@@ -357,7 +374,7 @@
                             <button onclick="exportOSMDPDF()" id="btn-save-pdf"
                                 class="btn-accent flex items-center justify-center py-2 px-4 rounded-xl text-sm font-medium transition-colors shadow-lg">
                                 <i data-feather="file-text" class="w-4 h-4 mr-2"></i>
-                                Save PDF
+                                <span>Save PDF</span>
                             </button>
                         </div>
                     </div>
@@ -446,6 +463,14 @@
                                         <div class="dot absolute left-1 top-1 w-3 h-3 rounded-full transition transform peer-checked:translate-x-3"></div>
                                     </div>
                                 </label>
+                            </div>
+                            <div class="flex items-center justify-between col-span-2">
+                                <span class="text-sm text-secondary">Stem Direction</span>
+                                <select id="style-stem-direction" class="block w-32 px-3 py-2 bg-surface border border-base rounded-lg text-primary input-themed outline-none text-sm">
+                                    <option value="up">Force Up</option>
+                                    <option value="down">Force Down</option>
+                                    <option value="auto">Auto (OSMD)</option>
+                                </select>
                             </div>
                         </div>
                     </div>
