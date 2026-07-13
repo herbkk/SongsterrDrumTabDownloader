@@ -60,7 +60,7 @@ class DrumPlaybackEngine {
         this.customCursor = null;
         
         this.isReady = false;
-        this.drumKitVarName = '_drum_35_0_JCLive_sf2_file';
+        this.drumZones = {}; // Stores multiple zones by pitch
         this.volume = 0.8;
     }
 
@@ -77,13 +77,44 @@ class DrumPlaybackEngine {
             if (typeof WebAudioFontPlayer !== 'undefined') {
                 this.player = new WebAudioFontPlayer();
                 
-                if (window[this.drumKitVarName]) {
-                    this.drumZone = window[this.drumKitVarName];
-                    this.player.loader.decodeAfterLoading(this.audioContext, this.drumKitVarName);
-                    this.isReady = true;
-                } else {
-                    console.error("WebAudioFont drum kit not loaded.");
+                // Get all unique MIDI pitches from GM_DRUM_NOTES
+                const uniquePitches = [...new Set(Object.values(GM_DRUM_NOTES))];
+                
+                const loadPitch = (pitch) => {
+                    return new Promise((resolve) => {
+                        const varName = `_drum_${pitch}_0_JCLive_sf2_file`;
+                        if (window[varName]) {
+                            resolve({ pitch, varName });
+                            return;
+                        }
+                        const script = document.createElement('script');
+                        script.src = `https://surikov.github.io/webaudiofontdata/sound/128${pitch}_0_JCLive_sf2_file.js`;
+                        script.onload = () => resolve({ pitch, varName });
+                        script.onerror = () => {
+                            console.error(`Failed to load drum pitch ${pitch}`);
+                            resolve({ pitch, varName: null });
+                        };
+                        document.head.appendChild(script);
+                    });
+                };
+                
+                const results = await Promise.all(uniquePitches.map(p => loadPitch(p)));
+                
+                for (let res of results) {
+                    if (res.varName && window[res.varName]) {
+                        this.drumZones[res.pitch] = window[res.varName];
+                        this.player.loader.decodeAfterLoading(this.audioContext, res.varName);
+                    }
                 }
+                
+                // Wait for all audio decoding to finish
+                await new Promise(resolve => {
+                    this.player.loader.waitLoad(() => {
+                        this.isReady = true;
+                        resolve();
+                    });
+                });
+                
             } else {
                 console.error("WebAudioFontPlayer not found.");
             }
@@ -108,14 +139,24 @@ class DrumPlaybackEngine {
     }
 
     getDrumKey(note) {
-        if (!note || !note.Pitch) return null;
+        if (!note || note.halfTone === undefined) return null;
         
-        let step = note.Pitch.step !== undefined ? note.Pitch.step : note.Pitch.FundamentalNote;
-        let octave = note.Pitch.octave !== undefined ? note.Pitch.octave : note.Pitch.Octave;
+        // OSMD applies a -1 octave transposition to the entire score, including percussion clefs.
+        // We add 12 to reverse this transposition and retrieve the true visual MIDI pitch.
+        const adjustedHalfTone = note.halfTone + 12;
         
-        if (typeof step === 'number' && step >= 0 && step <= 6) {
-            return `${OSMD_STEP_NAMES[step]}-${octave}`;
+        const octave = Math.floor(adjustedHalfTone / 12) - 1;
+        const pitchClass = adjustedHalfTone % 12;
+        
+        // Map pitchClass back to visual step (0=C, 2=D, 4=E, 5=F, 7=G, 9=A, 11=B)
+        const stepMap = {
+            0: 'C', 2: 'D', 4: 'E', 5: 'F', 7: 'G', 9: 'A', 11: 'B'
+        };
+        
+        if (stepMap[pitchClass] !== undefined) {
+            return `${stepMap[pitchClass]}-${octave}`;
         }
+        
         return null;
     }
 
@@ -326,26 +367,33 @@ class DrumPlaybackEngine {
                             }
                         }
                         
-                        if (note.ParentVoiceItem && note.ParentVoiceItem.isCue) {
-                            if (drumType === 'Snare') drumType = 'Snare Ghost';
-                        }
-                        // Generic length/size checks for ghost notes
-                        if (note.Length && note.Length.RealValue < 0) {
+                        let isGhost = false;
+                        if (note.ParentVoiceItem && note.ParentVoiceItem.isCue) isGhost = true;
+                        if (note.Length && note.Length.RealValue < 0) isGhost = true;
+                        
+                        if (isGhost) {
+                            noteVol = this.volume * 0.4;
                             if (drumType === 'Snare') drumType = 'Snare Ghost';
                         }
                         
                         if (GM_DRUM_NOTES[drumType]) {
                             midiPitch = GM_DRUM_NOTES[drumType];
                         }
-                        if (drumType === 'Snare Ghost') {
-                            noteVol = this.volume * 0.4;
-                        }
                     } else if (note.halfTone) {
                         // Fallback
                         midiPitch = note.halfTone;
                     }
 
-                    this.player.queueWaveTable(this.audioContext, this.audioContext.destination, this.drumZone, absoluteEventTime, midiPitch, 0.5, noteVol);
+                    let targetZone = this.drumZones[midiPitch];
+                    if (!targetZone) {
+                        // Fallback mechanism: If we don't have a specific sample for this note,
+                        // we fallback to Bass Drum (36) and WebAudioFont will pitch it up/down to the midiPitch.
+                        targetZone = this.drumZones[36] || Object.values(this.drumZones)[0];
+                    }
+                    
+                    if (targetZone) {
+                        this.player.queueWaveTable(this.audioContext, this.audioContext.destination, targetZone, absoluteEventTime, midiPitch, 0.5, noteVol);
+                    }
                 }
             }
 
