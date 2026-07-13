@@ -295,6 +295,16 @@ body { background-color: var(--bg-body); color: var(--text-primary); }
   background: rgba(var(--accent-1-rgb), 0.6);
 }
 
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+
 
 /* ─── Feather Icons Alignment ────────────────────────────────────────────── */
 
@@ -441,8 +451,14 @@ body { background-color: var(--bg-body); color: var(--text-primary); }
 
 .theme-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .theme-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 .theme-card {

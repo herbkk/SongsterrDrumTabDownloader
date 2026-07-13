@@ -1570,7 +1570,7 @@ function renderLibraryItem(item) {
     if (item.customMapping) {
         const count = Object.keys(item.customMapping).length;
         if (count > 0) {
-            badgeHtml = `<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent-glow text-accent border border-accent-subtle flex items-center" data-tooltip="${count} Custom Drum Mappings Saved"><i data-feather="settings" class="w-3 h-3 mr-1"></i>${count} Mappings</span>`;
+            badgeHtml = `<span class="ml-2 p-1 rounded bg-accent-glow text-accent border border-accent-subtle flex items-center shrink-0 cursor-help" data-tooltip="${count} Custom Drum Mapping${count !== 1 ? 's' : ''} Saved"><i data-feather="map" class="w-3.5 h-3.5"></i></span>`;
         }
     }
 
