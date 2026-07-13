@@ -705,7 +705,7 @@ function createConfiguredOSMD(containerElement, isGhost = false) {
     osmd.EngravingRules.FlatBeams = true; // Hardcoded best for drums
     osmd.EngravingRules.RenderMeasureNumbers = drawMeasures;
     osmd.EngravingRules.PercussionOneLineCutoff = 0;
-    
+
     // Apply Advanced PDF Layout
     osmd.EngravingRules.DistanceBetweenSystems = parseInt(document.getElementById('osmd-dist-systems')?.value || 10);
     osmd.EngravingRules.DistanceBetweenStaves = parseInt(document.getElementById('osmd-dist-staves')?.value || 5);
@@ -713,7 +713,7 @@ function createConfiguredOSMD(containerElement, isGhost = false) {
     osmd.EngravingRules.PageBottomMargin = parseInt(document.getElementById('osmd-margin-bottom')?.value || 20);
     osmd.EngravingRules.PageLeftMargin = parseInt(document.getElementById('osmd-margin-left')?.value || 10);
     osmd.EngravingRules.PageRightMargin = parseInt(document.getElementById('osmd-margin-right')?.value || 10);
-    
+
     osmd.zoom = zoomVal;
 
     if (window.osmdDarkModeGlobal) {
@@ -815,29 +815,35 @@ async function showSuccess(result) {
     const osmdContainer = document.getElementById('osmd-container');
     if (osmdContainer) {
         osmdContainer.innerHTML = ''; // Clear previous
-        
+
         // Re-instantiate OSMD to avoid memory leaks or rendering state bugs between songs
         osmdInstance = createConfiguredOSMD(osmdContainer, false);
-        
+
         runWithOSMDLoader(null, () => {
             return osmdInstance.load(result.xml_string).then(() => {
                 osmdInstance.render();
+                postProcessOSMDRender();
             });
         }, () => {
             // Success Callback
-            
+
             // Initialize Audio Playback
             if (window.playbackEngine) {
                 let bpmInput = document.getElementById('bpm-input').value;
                 let currentBpm = bpmInput ? parseFloat(bpmInput) : window.currentBaseTempo; // fallback
                 window.playbackEngine.init(osmdInstance, currentBpm, result.playback_map);
             }
-            
+
             // Show audio buttons
             document.getElementById('btn-audio-play').classList.remove('hidden');
             document.getElementById('btn-audio-play').classList.add('flex');
             document.getElementById('btn-audio-stop').classList.remove('hidden');
             document.getElementById('btn-audio-stop').classList.add('flex');
+            const volumeBtn = document.getElementById('btn-volume-drag');
+            if (volumeBtn) {
+                volumeBtn.classList.remove('hidden');
+                volumeBtn.classList.add('flex');
+            }
         }, (err) => {
             console.error("OSMD Load Error:", err);
             showError("Failed to render sheet music preview.");
@@ -849,19 +855,19 @@ async function showSuccess(result) {
 
 function togglePlayback() {
     if (!window.playbackEngine) return;
-    
+
     if (window.playbackEngine.isPlaying) {
         window.playbackEngine.pause();
     } else {
         window.playbackEngine.play();
     }
-    
+
     updateAudioPlaybackUI();
 }
 
 function stopPlayback() {
     if (!window.playbackEngine) return;
-    
+
     window.playbackEngine.stop();
     updateAudioPlaybackUI();
 }
@@ -870,7 +876,7 @@ function updateAudioPlaybackUI() {
     const playBtn = document.getElementById('btn-audio-play');
     const playIcon = document.getElementById('icon-audio-play');
     const pauseIcon = document.getElementById('icon-audio-pause');
-    
+
     if (window.playbackEngine && window.playbackEngine.isPlaying) {
         playIcon.classList.add('hidden');
         pauseIcon.classList.remove('hidden');
@@ -880,7 +886,7 @@ function updateAudioPlaybackUI() {
         pauseIcon.classList.add('hidden');
         if (playBtn) playBtn.setAttribute('data-tooltip', 'Play Audio');
     }
-    
+
     // Refresh tooltip if visible
     if (window.tooltipManager && window.tooltipManager.currentTarget === playBtn) {
         window.tooltipManager.showTooltip(playBtn);
@@ -1082,6 +1088,7 @@ function updateDarkThemeColors() {
             osmdInstance.setOptions({ pageBackgroundColor: window.osmdDarkBg });
             window.applyDarkThemeEngravingRules(osmdInstance);
             osmdInstance.render();
+            postProcessOSMDRender();
         }
         if (currentInterceptMapper && !panels.mapping.classList.contains('hidden')) {
             currentInterceptMapper.updateDarkMode(true);
@@ -1123,6 +1130,7 @@ function toggleOSMDDarkMode() {
             }
 
             osmdInstance.render();
+            postProcessOSMDRender();
         }
 
         if (currentInterceptMapper && !panels.mapping.classList.contains('hidden')) {
@@ -1269,7 +1277,8 @@ function toggleStemDirection() {
 
             return osmdInstance.load(newXmlString).then(() => {
                 osmdInstance.render();
-                
+                postProcessOSMDRender();
+
                 // Re-initialize Audio Playback with the new OSMD instance
                 if (window.playbackEngine) {
                     let bpmInput = document.getElementById('bpm-input').value;
@@ -1297,6 +1306,22 @@ window.applyDefaultLightEngravingRules = function (osmd) {
     osmd.EngravingRules.TempoColor = "#000000";
     osmd.EngravingRules.MeasureNumberColor = "#000000";
     osmd.EngravingRules.RepeatBarlineColor = "#000000";
+};
+
+// Post-process SVG immediately after OSMD render to fine-tune visual layout 
+// (e.g., forcing repeat counts to align over the repeat barline, bypassing OSMD collision avoidance)
+window.postProcessOSMDRender = function () {
+    const svgs = document.querySelectorAll('#osmd-container svg');
+    svgs.forEach(svg => {
+        const texts = Array.from(svg.querySelectorAll('text'));
+        const repeatTexts = texts.filter(t => t.textContent.match(/^\d+x$/));
+        
+        repeatTexts.forEach(rt => {
+            const rtX = parseFloat(rt.getAttribute('x') || 0);
+            // Shift left by 35 units to clear the first note and align precisely over the repeat barline
+            rt.setAttribute('x', (rtX - 35).toString());
+        });
+    });
 };
 
 // Initialization
@@ -1734,7 +1759,7 @@ class TooltipManager {
         this.tooltipEl = document.createElement('div');
         this.tooltipEl.id = 'global-tooltip';
         document.body.appendChild(this.tooltipEl);
-        
+
         this.hoveredElement = null;
         this.currentTarget = null;
         this.showTimeout = null;
@@ -1784,17 +1809,17 @@ class TooltipManager {
         if (!text) return;
 
         this.tooltipEl.innerText = text;
-        
+
         // Ensure tooltip has content to calculate height
         this.tooltipEl.classList.remove('visible');
-        
+
         const rect = element.getBoundingClientRect();
         const tooltipRect = this.tooltipEl.getBoundingClientRect();
-        
+
         // Default position: above the element
         let top = rect.top - tooltipRect.height - 8;
         let left = rect.left + (rect.width / 2);
-        
+
         // Check if there's enough space above, if not put it below
         if (top < 10) {
             top = rect.bottom + 8;
@@ -1805,12 +1830,12 @@ class TooltipManager {
 
         this.tooltipEl.style.top = `${top}px`;
         this.tooltipEl.style.left = `${left}px`;
-        
+
         // Add visible class to trigger CSS transition
         requestAnimationFrame(() => {
             if (this.hoveredElement === element) {
                 this.tooltipEl.classList.add('visible');
-                
+
                 // Adjust if bleeding off screen horizontally
                 const updatedRect = this.tooltipEl.getBoundingClientRect();
                 if (updatedRect.left < 10) {
@@ -1829,8 +1854,97 @@ class TooltipManager {
     }
 }
 
+// --- Volume Control ---
+let globalVolume = 1.0;
+
+function setGlobalVolume(val) {
+    globalVolume = parseFloat(val);
+    globalVolume = Math.max(0, Math.min(1, globalVolume));
+
+    // Update Slider
+    const slider = document.getElementById('setting-volume');
+    if (slider && slider.value !== String(globalVolume)) slider.value = globalVolume;
+
+    const sliderVal = document.getElementById('setting-volume-val');
+    if (sliderVal) sliderVal.innerText = Math.round(globalVolume * 100) + '%';
+
+    // Update Button Fill
+    const fill = document.getElementById('volume-fill');
+    if (fill) fill.style.height = (globalVolume * 100) + '%';
+
+    // Update Icon opacity based on volume
+    const iconVol = document.getElementById('icon-volume');
+    const iconMuted = document.getElementById('icon-volume-muted');
+    if (iconVol && iconMuted) {
+        if (globalVolume === 0) {
+            iconVol.classList.add('hidden');
+            iconMuted.classList.remove('hidden');
+        } else {
+            iconVol.classList.remove('hidden');
+            iconMuted.classList.add('hidden');
+        }
+    }
+
+    // Update Audio Engine
+    if (window.playbackEngine) {
+        window.playbackEngine.volume = globalVolume;
+    }
+
+    localStorage.setItem('master_volume', globalVolume);
+}
+
+function initVolumeControl() {
+    const savedVol = localStorage.getItem('master_volume');
+    if (savedVol !== null) {
+        setGlobalVolume(savedVol);
+    } else {
+        setGlobalVolume(1.0);
+    }
+
+    const dragBtn = document.getElementById('btn-volume-drag');
+    if (!dragBtn) return;
+
+    let isDragging = false;
+    let startY = 0;
+    let startVol = 0;
+
+    function startDrag(e) {
+        isDragging = true;
+        startY = e.clientY || (e.touches && e.touches[0].clientY);
+        startVol = globalVolume;
+        document.body.style.userSelect = 'none';
+    }
+
+    function onDrag(e) {
+        if (!isDragging) return;
+        const y = e.clientY || (e.touches && e.touches[0].clientY);
+        const deltaY = startY - y; // positive if moving up
+
+        // 100px drag = 100% volume change
+        const deltaVol = deltaY / 100.0;
+        setGlobalVolume(startVol + deltaVol);
+    }
+
+    function stopDrag() {
+        if (isDragging) {
+            isDragging = false;
+            document.body.style.userSelect = '';
+        }
+    }
+
+    dragBtn.addEventListener('mousedown', startDrag);
+    dragBtn.addEventListener('touchstart', startDrag, { passive: true });
+
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('touchmove', onDrag, { passive: true });
+
+    document.addEventListener('mouseup', stopDrag);
+    document.addEventListener('touchend', stopDrag);
+}
+
 // Initialize tooltips and load settings
 document.addEventListener('DOMContentLoaded', () => {
     window.tooltipManager = new TooltipManager();
     loadOSMDLayoutSettings();
+    initVolumeControl();
 });

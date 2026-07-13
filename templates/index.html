@@ -400,6 +400,12 @@
                                 class="flex items-center justify-center w-11 h-11 border border-base rounded-xl hover:bg-surface-hover text-secondary hover:text-red-400 transition-colors shrink-0 hidden">
                                 <i data-feather="rotate-ccw" class="w-5 h-5"></i>
                             </button>
+                            <div id="btn-volume-drag" data-tooltip="Drag Vertically to Adjust Volume"
+                                class="relative flex items-center justify-center w-11 h-11 border border-base rounded-xl hover:bg-surface-hover transition-colors shrink-0 overflow-hidden cursor-ns-resize hidden select-none">
+                                <div id="volume-fill" class="absolute bottom-0 left-0 right-0 bg-accent transition-all duration-75" style="height: 100%; opacity: 0.5"></div>
+                                <i data-feather="volume-2" id="icon-volume" class="w-5 h-5 text-secondary pointer-events-none z-10"></i>
+                                <i data-feather="volume-x" id="icon-volume-muted" class="w-5 h-5 text-secondary pointer-events-none z-10 hidden"></i>
+                            </div>
                             <button id="btn-toggle-stem" onclick="toggleStemDirection()" data-tooltip="Toggle Stem Direction"
                                 class="flex items-center justify-center w-11 h-11 border border-base rounded-xl hover:bg-surface-hover text-secondary hover:text-primary transition-colors shrink-0">
                                 <svg id="icon-stem-up" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -478,6 +484,21 @@
                         </div>
                         <div id="theme-grid" class="theme-grid">
                             <!-- Accent theme cards injected by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Section: Audio Settings -->
+                    <div class="settings-section w-full">
+                        <div class="settings-section-title">
+                            <i data-feather="volume-2" class="text-accent"></i> Audio Settings
+                        </div>
+                        <div class="grid grid-cols-1 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-secondary mb-1">Master Volume (<span id="setting-volume-val">100%</span>)</label>
+                                <input type="range" id="setting-volume" min="0" max="1" step="0.01" value="1"
+                                    oninput="setGlobalVolume(this.value)"
+                                    class="w-full h-2 bg-[var(--border-base)] rounded-lg appearance-none cursor-pointer mt-2 focus-accent">
+                            </div>
                         </div>
                     </div>
 

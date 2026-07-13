@@ -188,7 +188,9 @@ class DrumPlaybackEngine {
                 let mIndex = this.osmd.cursor.iterator.CurrentMeasureIndex;
                 if (mIndex !== currentM) {
                     currentM = mIndex;
-                    this.measureStartTimes[currentM] = this.osmd.cursor.iterator.currentTimeStamp.RealValue;
+                    if (this.measureStartTimes[currentM] === undefined) {
+                        this.measureStartTimes[currentM] = this.osmd.cursor.iterator.currentTimeStamp.RealValue;
+                    }
                 }
                 this.osmd.cursor.next();
             }
@@ -325,7 +327,8 @@ class DrumPlaybackEngine {
                     left: this.osmd.cursor.cursorElement.style.left,
                     top: this.osmd.cursor.cursorElement.style.top,
                     width: "28px", // Keep it wide for drum visibility
-                    height: this.osmd.cursor.cursorElement.style.height || (this.osmd.cursor.cursorElement.clientHeight + "px")
+                    height: this.osmd.cursor.cursorElement.style.height || (this.osmd.cursor.cursorElement.clientHeight + "px"),
+                    parent: this.osmd.cursor.cursorElement.parentElement
                 });
             }
 
@@ -391,7 +394,7 @@ class DrumPlaybackEngine {
                         targetZone = this.drumZones[36] || Object.values(this.drumZones)[0];
                     }
                     
-                    if (targetZone) {
+                    if (targetZone && noteVol > 0) {
                         this.player.queueWaveTable(this.audioContext, this.audioContext.destination, targetZone, absoluteEventTime, midiPitch, 0.5, noteVol);
                     }
                 }
@@ -413,17 +416,17 @@ class DrumPlaybackEngine {
                     }
                     
                     const targetMeasure = this.playbackMap[this.mapIndex];
-                    if (targetMeasure !== newMeasureIndex || this.osmd.cursor.iterator.EndReached) {
-                        // We must enforce the jump to targetMeasure!
-                        // OSMD native repeats might have failed or jumped to the wrong pass.
-                        // Force OSMD to the correct measure
-                        let savedStamp = this.osmd.cursor.iterator.currentTimeStamp ? this.osmd.cursor.iterator.currentTimeStamp.RealValue : 0;
+                    // We must enforce the jump to targetMeasure!
+                    // OSMD native repeats might have failed, or jumped natively.
+                    // ANY native jump (forward or backward) desyncs the `currentTimeStamp` from our `measureStartTimes`!
+                    if (targetMeasure !== newMeasureIndex || this.osmd.cursor.iterator.EndReached || newMeasureIndex !== currentMeasureIndex + 1) {
+                        // Force OSMD to the correct measure via a fresh iterator
                         this.osmd.cursor.reset();
                         let safety = 0;
-                        while (this.osmd.cursor.iterator.CurrentMeasureIndex !== targetMeasure && !this.osmd.cursor.iterator.EndReached) {
+                        while (!this.osmd.cursor.iterator.EndReached && this.osmd.cursor.iterator.CurrentMeasureIndex !== targetMeasure) {
                             this.osmd.cursor.next();
                             safety++;
-                            if(safety > 5000) break; // prevent infinite loops if measure doesn't exist
+                            if(safety > 10000) break; // prevent infinite loops if measure doesn't exist
                         }
                     }
                 }
@@ -448,6 +451,9 @@ class DrumPlaybackEngine {
         while (this.cursorQueue.length > 0 && this.cursorQueue[0].time <= currentTime) {
             const ev = this.cursorQueue.shift();
             if (this.customCursor) {
+                if (ev.parent && this.customCursor.parentElement !== ev.parent) {
+                    ev.parent.appendChild(this.customCursor);
+                }
                 this.customCursor.style.left = ev.left;
                 this.customCursor.style.top = ev.top;
                 this.customCursor.style.width = ev.width;

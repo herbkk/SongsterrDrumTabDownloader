@@ -382,6 +382,22 @@ class MusicXMLGenerator:
                 ET.SubElement(barline_left, "bar-style").text = "heavy-light"
                 ET.SubElement(barline_left, "repeat", direction="forward")
 
+            # Inject text indicator for repeats > 2
+            if repeat_open:
+                times_to_play = 2
+                # Look ahead for the matching repeat count
+                for future_m in measures[mi:]:
+                    if future_m.get("repeat"):
+                        times_to_play = int(future_m.get("repeat")) if isinstance(future_m.get("repeat"), int) else 2
+                        break
+                
+                if times_to_play > 2:
+                    dir_elem = ET.SubElement(measure_elem, "direction", placement="above")
+                    dir_type = ET.SubElement(dir_elem, "direction-type")
+                    words = ET.SubElement(dir_type, "words", font_weight="bold", font_size="10")
+                    words.text = f"{times_to_play}x"
+                    words.set("default-y", "15")
+
             self._process_measure(measure_elem, measure_data)
 
             # Barline / Repeats / Endings (Right)
