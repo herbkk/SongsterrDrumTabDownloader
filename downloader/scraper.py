@@ -227,9 +227,7 @@ def download_drum_track(song_url: str = None, song_id: int = None,
         resp = requests.get(target_url, headers=HEADERS, timeout=15)
         resp.raise_for_status()
         track_data = resp.json()
-        
-        report("Download complete!", 0.9)
-        
+        report("Download complete!", 0.80)
         return {
             "success": True,
             "data": track_data,

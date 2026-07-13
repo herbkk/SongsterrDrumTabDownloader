@@ -74,6 +74,12 @@ def index():
     return render_template("index.html", build_info=BUILD_INFO)
 
 
+@app.route("/sw.js")
+def serve_sw():
+    """Serve the ServiceWorker at the root scope."""
+    return send_from_directory(os.path.join(BASE_DIR, "static"), "sw.js")
+
+
 @app.route("/api/search")
 def api_search():
     """
@@ -100,6 +106,42 @@ def api_search():
 def api_mapping():
     """Return the default backend drum mapping."""
     return jsonify({"mapping": DRUM_MAPPING})
+
+
+@app.route("/api/cover-art")
+def api_cover_art():
+    """
+    Proxy request to iTunes Search API to avoid CORS issues on the frontend.
+    Query params:
+        artist: string
+        title: string
+    """
+    artist = request.args.get("artist", "")
+    title = request.args.get("title", "")
+    
+    if not artist and not title:
+        return jsonify({"error": "Missing artist or title"}), 400
+        
+    import requests
+    from urllib.parse import quote_plus
+    
+    query = quote_plus(f"{artist} {title}")
+    url = f"https://itunes.apple.com/search?term={query}&entity=song&limit=1"
+    
+    try:
+        headers = {"User-Agent": "SongsterrDrumTabDownloader/1.0"}
+        res = requests.get(url, headers=headers, timeout=10)
+        res.raise_for_status()
+        data = res.json()
+        
+        if data.get("results") and len(data["results"]) > 0:
+            artwork = data["results"][0].get("artworkUrl100", "")
+            if artwork:
+                return jsonify({"url": artwork.replace("100x100bb", "400x400bb")})
+    except Exception as e:
+        logger.error(f"Failed to fetch cover art from iTunes: {e}")
+        
+    return jsonify({"url": None})
 
 
 @app.route("/api/download", methods=["POST"])
@@ -423,7 +465,7 @@ def _proceed_with_generation(task_id: str, track_data: dict, artist: str, title:
         
     try:
         # Step 2: Generate MusicXML
-        progress_callback("Generating MusicXML...", 0.85)
+        progress_callback("Generating MusicXML...", 0.9)
 
         # Build a clean filename
         safe_artist = "".join(c for c in artist if c.isalnum() or c in " -_").strip()

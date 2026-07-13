@@ -1386,13 +1386,12 @@ function hideToast(toastId = 'toast') {
 
 async function fetchAlbumCover(artist, title) {
     try {
-        const query = encodeURIComponent(`${artist} ${title}`);
-        const url = `https://itunes.apple.com/search?term=${query}&entity=song&limit=1`;
+        const query = new URLSearchParams({ artist, title }).toString();
+        const url = `/api/cover-art?${query}`;
         const res = await fetch(url);
         const data = await res.json();
-        if (data.results && data.results.length > 0) {
-            let artwork = data.results[0].artworkUrl100;
-            return artwork.replace('100x100bb', '400x400bb');
+        if (data.url) {
+            return data.url;
         }
     } catch (err) {
         console.error("Cover fetch error:", err);
