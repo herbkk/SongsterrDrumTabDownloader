@@ -148,6 +148,10 @@ body { background-color: var(--bg-body); color: var(--text-primary); }
 .text-secondary { color: var(--text-secondary); }
 .text-muted { color: var(--text-muted); }
 
+.hover\:text-primary:hover { color: var(--text-primary); }
+.hover\:text-secondary:hover { color: var(--text-secondary); }
+.hover\:text-muted:hover { color: var(--text-muted); }
+
 /* Borders */
 .border-base { border-color: var(--border-base); }
 .border-subtle { border-color: var(--border-subtle); }
@@ -157,6 +161,7 @@ body { background-color: var(--bg-body); color: var(--text-primary); }
 /* Text */
 .text-accent      { color: var(--accent-1); }
 .text-accent-2    { color: var(--accent-2); }
+.hover\:text-accent:hover { color: var(--accent-1); }
 
 /* Backgrounds */
 .bg-accent        { background-color: var(--accent-1); }
@@ -748,3 +753,9 @@ body { background-color: var(--bg-body); color: var(--text-primary); }
   border-radius: 9999px;
 }
 
+/* ─── OSMD Overrides ─────────────────────────────────────────────────────── */
+
+/* Override Tailwind img height reset for OSMD cursor */
+img[id^="cursorImg"] {
+  height: 40px !important;
+}

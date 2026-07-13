@@ -1,10 +1,13 @@
-const CACHE_NAME = 'drumtabs-v1';
+const CACHE_NAME = 'drumtabs-v2';
 const SHELL_ASSETS = [
   '/',
   '/static/css/custom.css',
   '/static/js/app.js',
   '/static/js/mapper.js',
-  '/static/img/favicon.svg',
+  '/static/js/playback.js',
+  '/static/js/WebAudioFontPlayer.js',
+  '/static/js/12835_0_JCLive_sf2_file.js',
+  '/static/img/favicon.png',
   '/static/img/Songsterr_Logo.svg',
   '/static/manifest.json',
   '/static/img/icon-192.png',

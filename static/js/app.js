@@ -225,6 +225,13 @@ function resetGlobalMapping() {
         localStorage.removeItem('style_draw_measures');
         localStorage.removeItem('style_zoom');
         localStorage.removeItem('style_force_stems_up');
+        localStorage.removeItem('osmd_dist_systems');
+        localStorage.removeItem('osmd_dist_staves');
+        localStorage.removeItem('osmd_margin_top');
+        localStorage.removeItem('osmd_margin_bottom');
+        localStorage.removeItem('osmd_margin_left');
+        localStorage.removeItem('osmd_margin_right');
+
         globalDrumMapping = {};
         const container = document.getElementById('global-mapping-container');
         container.innerHTML = '';
@@ -239,6 +246,19 @@ function resetGlobalMapping() {
         document.getElementById('style-stem-direction').value = 'up';
         document.getElementById('style-zoom').value = '0.6';
         document.getElementById('style-zoom-val').innerText = '0.6';
+
+        // Reset Advanced Layout DOM elements
+        const advDefaults = {
+            'dist-systems': 10, 'dist-staves': 5,
+            'margin-top': 20, 'margin-bottom': 20,
+            'margin-left': 10, 'margin-right': 10
+        };
+        Object.entries(advDefaults).forEach(([k, v]) => {
+            const el = document.getElementById(`osmd-${k}`);
+            const valDisplay = document.getElementById(`val-${k}`);
+            if (el) el.value = v;
+            if (valDisplay) valDisplay.innerText = v;
+        });
 
         renderThemePicker();
         renderBaseThemePicker();
@@ -685,6 +705,15 @@ function createConfiguredOSMD(containerElement, isGhost = false) {
     osmd.EngravingRules.FlatBeams = true; // Hardcoded best for drums
     osmd.EngravingRules.RenderMeasureNumbers = drawMeasures;
     osmd.EngravingRules.PercussionOneLineCutoff = 0;
+    
+    // Apply Advanced PDF Layout
+    osmd.EngravingRules.DistanceBetweenSystems = parseInt(document.getElementById('osmd-dist-systems')?.value || 10);
+    osmd.EngravingRules.DistanceBetweenStaves = parseInt(document.getElementById('osmd-dist-staves')?.value || 5);
+    osmd.EngravingRules.PageTopMargin = parseInt(document.getElementById('osmd-margin-top')?.value || 20);
+    osmd.EngravingRules.PageBottomMargin = parseInt(document.getElementById('osmd-margin-bottom')?.value || 20);
+    osmd.EngravingRules.PageLeftMargin = parseInt(document.getElementById('osmd-margin-left')?.value || 10);
+    osmd.EngravingRules.PageRightMargin = parseInt(document.getElementById('osmd-margin-right')?.value || 10);
+    
     osmd.zoom = zoomVal;
 
     if (window.osmdDarkModeGlobal) {
@@ -693,6 +722,31 @@ function createConfiguredOSMD(containerElement, isGhost = false) {
 
     return osmd;
 }
+
+function saveOSMDLayoutSettings() {
+    localStorage.setItem('osmd_dist_systems', document.getElementById('osmd-dist-systems').value);
+    localStorage.setItem('osmd_dist_staves', document.getElementById('osmd-dist-staves').value);
+    localStorage.setItem('osmd_margin_top', document.getElementById('osmd-margin-top').value);
+    localStorage.setItem('osmd_margin_bottom', document.getElementById('osmd-margin-bottom').value);
+    localStorage.setItem('osmd_margin_left', document.getElementById('osmd-margin-left').value);
+    localStorage.setItem('osmd_margin_right', document.getElementById('osmd-margin-right').value);
+}
+
+function loadOSMDLayoutSettings() {
+    const keys = ['dist-systems', 'dist-staves', 'margin-top', 'margin-bottom', 'margin-left', 'margin-right'];
+    keys.forEach(k => {
+        const val = localStorage.getItem(`osmd_${k.replace('-', '_')}`);
+        if (val) {
+            const el = document.getElementById(`osmd-${k}`);
+            if (el) {
+                el.value = val;
+                const valDisplay = document.getElementById(`val-${k}`);
+                if (valDisplay) valDisplay.innerText = val;
+            }
+        }
+    });
+}
+
 
 // --- Success & Reset ---
 
@@ -763,11 +817,63 @@ async function showSuccess(result) {
 
     osmdInstance.load(result.xml_string).then(() => {
         osmdInstance.render();
+        
+        // Initialize Audio Playback
+        if (window.playbackEngine) {
+            let bpmInput = document.getElementById('bpm-input').value;
+            let currentBpm = bpmInput ? parseFloat(bpmInput) : 120; // fallback
+            window.playbackEngine.init(osmdInstance, currentBpm);
+            
+            // Show audio buttons
+            document.getElementById('btn-audio-play').classList.remove('hidden');
+            document.getElementById('btn-audio-play').classList.add('flex');
+            document.getElementById('btn-audio-stop').classList.remove('hidden');
+            document.getElementById('btn-audio-stop').classList.add('flex');
+        }
     }).catch(err => {
         console.error("OSMD Load Error:", err);
         showError("Failed to render sheet music preview.");
     });
 }
+
+// --- Audio Playback Controls ---
+
+function togglePlayback() {
+    if (!window.playbackEngine) return;
+    
+    if (window.playbackEngine.isPlaying) {
+        window.playbackEngine.pause();
+    } else {
+        window.playbackEngine.play();
+    }
+    
+    updateAudioPlaybackUI();
+}
+
+function stopPlayback() {
+    if (!window.playbackEngine) return;
+    
+    window.playbackEngine.stop();
+    updateAudioPlaybackUI();
+}
+
+function updateAudioPlaybackUI() {
+    const playIcon = document.getElementById('icon-audio-play');
+    const pauseIcon = document.getElementById('icon-audio-pause');
+    
+    if (window.playbackEngine && window.playbackEngine.isPlaying) {
+        playIcon.classList.add('hidden');
+        pauseIcon.classList.remove('hidden');
+    } else {
+        playIcon.classList.remove('hidden');
+        pauseIcon.classList.add('hidden');
+    }
+}
+
+// Ensure audio stops if user navigates away or stems are toggled
+document.addEventListener('playback-stopped', () => {
+    updateAudioPlaybackUI();
+});
 
 function svgToJpegDataUrl(svgElement) {
     return new Promise((resolve, reject) => {
@@ -898,6 +1004,11 @@ async function generateGhostPDF(xmlString, artist, title) {
 }
 
 function resetUI() {
+    // Stop audio playback if active
+    if (window.playbackEngine && window.playbackEngine.isPlaying) {
+        stopPlayback();
+    }
+
     // Restore main container width
     const mainCard = document.querySelector('main.glass-card');
     mainCard.classList.add('max-w-3xl');
@@ -1141,6 +1252,13 @@ function toggleStemDirection() {
 
             return osmdInstance.load(newXmlString).then(() => {
                 osmdInstance.render();
+                
+                // Re-initialize Audio Playback with the new OSMD instance
+                if (window.playbackEngine) {
+                    let bpmInput = document.getElementById('bpm-input').value;
+                    let currentBpm = bpmInput ? parseFloat(bpmInput) : 120;
+                    window.playbackEngine.init(osmdInstance, currentBpm);
+                }
             });
         }, () => {
             updateStemButtonIcon();
@@ -1404,7 +1522,8 @@ function renderLibraryItem(item) {
         ensureAlbumCover(item.url, item.artist, item.title);
     }
 
-    const dateStr = new Date(item.date).toLocaleDateString();
+    const d = new Date(item.date);
+    const dateStr = `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`;
     let badgeHtml = '';
     if (item.customMapping) {
         const count = Object.keys(item.customMapping).length;
@@ -1694,7 +1813,8 @@ class TooltipManager {
     }
 }
 
-// Initialize tooltips
+// Initialize tooltips and load settings
 document.addEventListener('DOMContentLoaded', () => {
     window.tooltipManager = new TooltipManager();
+    loadOSMDLayoutSettings();
 });

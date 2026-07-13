@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Songsterr Drum Tab Downloader</title>
-    <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
+    <link rel="icon" type="image/png" href="/static/img/favicon.png">
 
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="/static/manifest.json">
@@ -240,7 +240,7 @@
                 </div>
 
                 <!-- Library Panel -->
-                <div id="panel-library" class="space-y-4 hidden transition-opacity duration-300">
+                <div id="panel-library" class="space-y-4 hidden transition-opacity duration-300 mb-8">
                     <div class="flex items-center justify-between">
                         <h3 class="text-lg font-medium text-primary flex items-center">
                             <i data-feather="book" class="w-5 h-5 mr-2 text-accent"></i>
@@ -297,7 +297,7 @@
                 </div>
 
                 <!-- Progress Panel (Overlay) -->
-                <div id="panel-progress" class="hidden flex-col items-center justify-center py-8 space-y-6">
+                <div id="panel-progress" class="hidden flex-col items-center justify-center py-4 space-y-6">
                     <div class="text-center space-y-2">
                         <h3 id="progress-title" class="text-lg font-medium text-primary">Downloading Tab</h3>
                         <p id="progress-step" class="text-sm text-accent font-mono">Initializing...</p>
@@ -375,21 +375,31 @@
 
                 <!-- Result Panel (Overlay) -->
                 <div id="panel-result"
-                    class="hidden flex-col items-center justify-center py-6 space-y-6 text-center w-full">
-                    <div class="flex flex-col sm:flex-row items-center w-full mb-4 space-y-4 sm:space-y-0">
-                        <button onclick="resetUI()" data-tooltip="Go Back"
-                            class="mr-0 sm:mr-4 p-2 text-secondary hover:text-primary hover:bg-white/10 rounded-xl transition-colors flex items-center justify-center shrink-0">
-                            <i data-feather="arrow-left" class="w-6 h-6"></i>
-                        </button>
-                        <div class="text-center sm:text-left flex-1 min-w-0">
-                            <h3 class="text-xl font-bold text-primary mb-1 truncate">Download Complete!</h3>
-                            <p id="result-song-name" class="text-secondary truncate">Artist - Title</p>
+                    class="hidden flex-col items-center justify-center py-3 space-y-6 text-center w-full">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 items-center w-full mb-4 gap-4 sm:gap-0 relative">
+                        <!-- Left Group -->
+                        <div class="flex items-center justify-start min-w-0">
+                            <button onclick="resetUI()" data-tooltip="Go Back"
+                                class="mr-3 p-2 text-secondary hover:text-primary hover:bg-white/10 rounded-xl transition-colors flex items-center justify-center shrink-0">
+                                <i data-feather="arrow-left" class="w-6 h-6"></i>
+                            </button>
+                            <div class="text-left min-w-0">
+                                <h3 class="text-xl font-bold text-primary mb-1 truncate">Download Complete!</h3>
+                                <p id="result-song-name" class="text-secondary truncate">Artist - Title</p>
+                            </div>
                         </div>
-                        <div class="flex space-x-3 shrink-0">
-                            <a id="result-songsterr-link" href="#" target="_blank" data-tooltip="View on Songsterr"
-                                class="hidden items-center justify-center w-11 h-11 border border-base rounded-xl hover:opacity-80 transition-opacity overflow-hidden shrink-0">
-                                <img src="/static/img/Songsterr_Logo.svg" alt="Songsterr" class="w-full h-full object-cover">
-                            </a>
+
+                        <!-- Center Group -->
+                        <div class="flex items-center justify-center space-x-3 shrink-0">
+                            <button id="btn-audio-play" onclick="togglePlayback()" data-tooltip="Play Audio"
+                                class="flex items-center justify-center w-11 h-11 border border-base rounded-xl hover:bg-surface-hover text-secondary hover:text-accent transition-colors shrink-0 hidden">
+                                <i data-feather="play" id="icon-audio-play" class="w-5 h-5"></i>
+                                <i data-feather="pause" id="icon-audio-pause" class="w-5 h-5 hidden"></i>
+                            </button>
+                            <button id="btn-audio-stop" onclick="stopPlayback()" data-tooltip="Reset / Stop Audio"
+                                class="flex items-center justify-center w-11 h-11 border border-base rounded-xl hover:bg-surface-hover text-secondary hover:text-red-400 transition-colors shrink-0 hidden">
+                                <i data-feather="rotate-ccw" class="w-5 h-5"></i>
+                            </button>
                             <button id="btn-toggle-stem" onclick="toggleStemDirection()" data-tooltip="Toggle Stem Direction"
                                 class="flex items-center justify-center w-11 h-11 border border-base rounded-xl hover:bg-surface-hover text-secondary hover:text-primary transition-colors shrink-0">
                                 <svg id="icon-stem-up" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -407,8 +417,16 @@
                                     <rect x="13.5" y="6" width="1.5" height="11" />
                                 </svg>
                             </button>
+                        </div>
+
+                        <!-- Right Group -->
+                        <div class="flex items-center justify-end space-x-3 shrink-0">
+                            <a id="result-songsterr-link" href="#" target="_blank" data-tooltip="View on Songsterr"
+                                class="hidden items-center justify-center w-11 h-11 border border-base rounded-xl hover:opacity-80 transition-opacity overflow-hidden shrink-0">
+                                <img src="/static/img/Songsterr_Logo.svg" alt="Songsterr" class="w-full h-full object-cover">
+                            </a>
                             <a id="result-download-link" href="#" download
-                                class="flex items-center justify-center py-2 px-4 border border-base rounded-xl text-sm font-medium text-primary bg-surface hover:bg-surface-hover transition-colors">
+                                class="flex items-center justify-center py-2 px-4 border border-base rounded-xl text-sm font-medium text-secondary hover:text-primary hover:bg-surface-hover transition-colors">
                                 <i data-feather="download" class="w-4 h-4 mr-2"></i>
                                 Save .musicxml
                             </a>
@@ -446,7 +464,7 @@
                     <!-- Section: Base Style -->
                     <div class="settings-section w-full">
                         <div class="settings-section-title">
-                            <i data-feather="layout"></i> Base Style
+                            <i data-feather="layout" class="text-accent"></i> Base Style
                         </div>
                         <div id="base-theme-grid" class="theme-grid">
                             <!-- Base theme cards injected by JS -->
@@ -456,7 +474,7 @@
                     <!-- Section: Accent Color -->
                     <div class="settings-section w-full">
                         <div class="settings-section-title">
-                            <i data-feather="droplet"></i> Accent Color
+                            <i data-feather="droplet" class="text-accent"></i> Accent Color
                         </div>
                         <div id="theme-grid" class="theme-grid">
                             <!-- Accent theme cards injected by JS -->
@@ -466,7 +484,7 @@
                     <!-- Section: PDF & Sheet Music -->
                     <div class="settings-section w-full">
                         <div class="settings-section-title">
-                            <i data-feather="file-text"></i> PDF & Sheet Music
+                            <i data-feather="file-text" class="text-accent"></i> PDF & Sheet Music
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
@@ -514,13 +532,54 @@
                                     <option value="auto">Auto (OSMD)</option>
                                 </select>
                             </div>
+
+                            <!-- Advanced PDF Layout -->
+                            <div class="col-span-2 mt-2">
+                                <details class="group bg-surface border border-base rounded-xl overflow-hidden transition-all">
+                                    <summary class="flex items-center justify-between p-3 cursor-pointer select-none bg-surface-hover/50 hover:bg-surface-hover">
+                                        <span class="text-sm font-medium text-primary flex items-center">
+                                            <i data-feather="layout" class="w-4 h-4 mr-2 text-muted"></i>
+                                            Advanced PDF Layout
+                                        </span>
+                                        <i data-feather="chevron-down" class="w-4 h-4 text-secondary transition-transform group-open:rotate-180"></i>
+                                    </summary>
+                                    <div class="p-4 space-y-4 border-t border-base bg-surface/50">
+                                        <div class="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-xs font-medium text-secondary mb-1">Systems Distance (<span id="val-dist-systems">10</span>)</label>
+                                                <input type="range" id="osmd-dist-systems" min="0" max="50" step="1" value="10" oninput="document.getElementById('val-dist-systems').innerText = this.value; saveOSMDLayoutSettings()" class="w-full h-2 bg-[var(--border-base)] rounded-lg appearance-none cursor-pointer mt-1 focus-accent">
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-medium text-secondary mb-1">Staves Distance (<span id="val-dist-staves">5</span>)</label>
+                                                <input type="range" id="osmd-dist-staves" min="0" max="50" step="1" value="5" oninput="document.getElementById('val-dist-staves').innerText = this.value; saveOSMDLayoutSettings()" class="w-full h-2 bg-[var(--border-base)] rounded-lg appearance-none cursor-pointer mt-1 focus-accent">
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-medium text-secondary mb-1">Top Margin (<span id="val-margin-top">20</span>)</label>
+                                                <input type="range" id="osmd-margin-top" min="0" max="50" step="1" value="20" oninput="document.getElementById('val-margin-top').innerText = this.value; saveOSMDLayoutSettings()" class="w-full h-2 bg-[var(--border-base)] rounded-lg appearance-none cursor-pointer mt-1 focus-accent">
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-medium text-secondary mb-1">Bottom Margin (<span id="val-margin-bottom">20</span>)</label>
+                                                <input type="range" id="osmd-margin-bottom" min="0" max="50" step="1" value="20" oninput="document.getElementById('val-margin-bottom').innerText = this.value; saveOSMDLayoutSettings()" class="w-full h-2 bg-[var(--border-base)] rounded-lg appearance-none cursor-pointer mt-1 focus-accent">
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-medium text-secondary mb-1">Left Margin (<span id="val-margin-left">10</span>)</label>
+                                                <input type="range" id="osmd-margin-left" min="0" max="50" step="1" value="10" oninput="document.getElementById('val-margin-left').innerText = this.value; saveOSMDLayoutSettings()" class="w-full h-2 bg-[var(--border-base)] rounded-lg appearance-none cursor-pointer mt-1 focus-accent">
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-medium text-secondary mb-1">Right Margin (<span id="val-margin-right">10</span>)</label>
+                                                <input type="range" id="osmd-margin-right" min="0" max="50" step="1" value="10" oninput="document.getElementById('val-margin-right').innerText = this.value; saveOSMDLayoutSettings()" class="w-full h-2 bg-[var(--border-base)] rounded-lg appearance-none cursor-pointer mt-1 focus-accent">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </details>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Section: Sheet Music Dark Mode Colors -->
                     <div class="settings-section w-full">
                         <div class="settings-section-title">
-                            <i data-feather="moon"></i> Sheet Music Dark Mode Colors
+                            <i data-feather="moon" class="text-accent"></i> Sheet Music Dark Mode Colors
                         </div>
                         <div class="grid grid-cols-3 gap-3">
                             <div>
@@ -556,7 +615,7 @@
                     <!-- Section: Drum Mapping -->
                     <div class="settings-section w-full">
                         <div class="settings-section-title">
-                            <i data-feather="sliders"></i> Global Drum Mapping
+                            <i data-feather="sliders" class="text-accent"></i> Global Drum Mapping
                         </div>
                         <div id="global-mapping-container"
                             class="w-full space-y-3 max-h-[500px] overflow-y-auto custom-scrollbar -mr-2 pr-2">
@@ -622,6 +681,9 @@
     </script>
 
     <!-- App Logic -->
+    <script src="/static/js/WebAudioFontPlayer.js"></script>
+    <script src="/static/js/12835_0_JCLive_sf2_file.js"></script>
+    <script src="/static/js/playback.js"></script>
     <script src="/static/js/mapper.js"></script>
     <script src="/static/js/app.js"></script>
 
