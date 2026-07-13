@@ -198,7 +198,13 @@ function switchTab(tabName) {
 
     if (tabName === 'search') searchInput.focus();
     if (tabName === 'url') urlInput.focus();
-    if (tabName === 'library') renderLibrary();
+    if (tabName === 'library') {
+        // Sync sort pill active state to persisted preference
+        document.querySelectorAll('.library-sort-pill').forEach(pill => {
+            pill.classList.toggle('active', pill.dataset.sort === librarySortMode);
+        });
+        renderLibrary();
+    }
 
     if (tabName === 'settings') {
         const container = document.getElementById('global-mapping-container');
@@ -1295,6 +1301,9 @@ async function ensureAlbumCover(url, artist, title) {
 
 // --- Library / History Management ---
 
+let librarySortMode = localStorage.getItem('songsterr_library_sort') || 'recent';
+let libraryFilterQuery = '';
+
 function getLibrary() {
     try {
         const data = localStorage.getItem('songsterr_library');
@@ -1350,9 +1359,96 @@ function clearLibrary() {
     }
 }
 
+function setLibrarySort(mode) {
+    librarySortMode = mode;
+    localStorage.setItem('songsterr_library_sort', mode);
+
+    // Update pill active states
+    document.querySelectorAll('.library-sort-pill').forEach(pill => {
+        if (pill.dataset.sort === mode) {
+            pill.classList.add('active');
+        } else {
+            pill.classList.remove('active');
+        }
+    });
+
+    renderLibrary();
+}
+
+function onLibraryFilterInput() {
+    const input = document.getElementById('library-filter-input');
+    const clearBtn = document.getElementById('library-filter-clear');
+    libraryFilterQuery = input.value.trim().toLowerCase();
+
+    if (libraryFilterQuery.length > 0) {
+        clearBtn.classList.remove('hidden');
+    } else {
+        clearBtn.classList.add('hidden');
+    }
+
+    renderLibrary();
+}
+
+function clearLibraryFilter() {
+    const input = document.getElementById('library-filter-input');
+    const clearBtn = document.getElementById('library-filter-clear');
+    input.value = '';
+    libraryFilterQuery = '';
+    clearBtn.classList.add('hidden');
+    renderLibrary();
+}
+
+function renderLibraryItem(item) {
+    if (!item.coverUrl && !item.coverFetchAttempted) {
+        item.coverFetchAttempted = true; // temporary session flag
+        ensureAlbumCover(item.url, item.artist, item.title);
+    }
+
+    const dateStr = new Date(item.date).toLocaleDateString();
+    let badgeHtml = '';
+    if (item.customMapping) {
+        const count = Object.keys(item.customMapping).length;
+        if (count > 0) {
+            badgeHtml = `<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent-glow text-accent border border-accent-subtle flex items-center" data-tooltip="${count} Custom Drum Mappings Saved"><i data-feather="settings" class="w-3 h-3 mr-1"></i>${count} Mappings</span>`;
+        }
+    }
+
+    const coverHtml = item.coverUrl
+        ? `<img src="${item.coverUrl}" alt="Cover" class="w-16 h-16 rounded-md object-cover mr-4 border border-base shadow-lg shrink-0">`
+        : `<div class="w-16 h-16 rounded-md bg-surface border border-base mr-4 flex items-center justify-center shrink-0 shadow-inner"><i data-feather="music" class="w-6 h-6 text-muted"></i></div>`;
+
+    return `
+        <div class="flex items-center justify-between p-4 bg-input border border-subtle rounded-xl hover:bg-surface transition-colors group">
+            ${coverHtml}
+            <div class="flex-1 min-w-0 mr-4">
+                <h3 class="text-primary font-medium truncate">${item.title}</h3>
+                <p class="text-secondary text-sm truncate">${item.artist}</p>
+                <div class="flex items-center mt-1">
+                    <p class="text-muted text-xs">Downloaded: ${dateStr}</p>
+                    ${badgeHtml}
+                </div>
+            </div>
+            <div class="flex items-center space-x-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                <button onclick="startDownload({url: '${item.url}'})" class="p-2 text-accent hover:text-primary hover:bg-white/5 rounded-lg transition-colors" data-tooltip="Re-open">
+                    <i data-feather="external-link" class="w-4 h-4"></i>
+                </button>
+                <button onclick="removeFromLibrary('${item.url}')" class="p-2 text-red-400 hover:text-red-300 hover:bg-white/5 rounded-lg transition-colors" data-tooltip="Delete">
+                    <i data-feather="trash-2" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
 function renderLibrary() {
-    const lib = getLibrary();
+    let lib = getLibrary();
     const container = document.getElementById('library-list');
+    const controls = document.getElementById('library-controls');
+
+    // Show/hide controls based on whether the library has items
+    if (controls) {
+        controls.style.display = lib.length === 0 ? 'none' : '';
+    }
 
     if (lib.length === 0) {
         container.innerHTML = `
@@ -1363,50 +1459,67 @@ function renderLibrary() {
                 <p class="empty-state-text">No songs in your library yet.<br>Download a tab to save it here!</p>
             </div>
         `;
+        feather.replace();
         return;
     }
 
-    container.innerHTML = lib.map(item => {
-        if (!item.coverUrl && !item.coverFetchAttempted) {
-            item.coverFetchAttempted = true; // temporary session flag
-            ensureAlbumCover(item.url, item.artist, item.title);
-        }
+    // Apply filter
+    if (libraryFilterQuery) {
+        lib = lib.filter(item =>
+            item.artist.toLowerCase().includes(libraryFilterQuery) ||
+            item.title.toLowerCase().includes(libraryFilterQuery)
+        );
+    }
 
-        const dateStr = new Date(item.date).toLocaleDateString();
-        let badgeHtml = '';
-        if (item.customMapping) {
-            const count = Object.keys(item.customMapping).length;
-            if (count > 0) {
-                badgeHtml = `<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent-glow text-accent border border-accent-subtle flex items-center" data-tooltip="${count} Custom Drum Mappings Saved"><i data-feather="settings" class="w-3 h-3 mr-1"></i>${count} Mappings</span>`;
-            }
-        }
-
-        const coverHtml = item.coverUrl
-            ? `<img src="${item.coverUrl}" alt="Cover" class="w-16 h-16 rounded-md object-cover mr-4 border border-base shadow-lg shrink-0">`
-            : `<div class="w-16 h-16 rounded-md bg-surface border border-base mr-4 flex items-center justify-center shrink-0 shadow-inner"><i data-feather="music" class="w-6 h-6 text-muted"></i></div>`;
-
-        return `
-            <div class="flex items-center justify-between p-4 bg-input border border-subtle rounded-xl hover:bg-surface transition-colors group">
-                ${coverHtml}
-                <div class="flex-1 min-w-0 mr-4">
-                    <h3 class="text-primary font-medium truncate">${item.title}</h3>
-                    <p class="text-secondary text-sm truncate">${item.artist}</p>
-                    <div class="flex items-center mt-1">
-                        <p class="text-muted text-xs">Downloaded: ${dateStr}</p>
-                        ${badgeHtml}
-                    </div>
+    if (lib.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon flex items-center justify-center">
+                    <i data-feather="search" class="w-5 h-5"></i>
                 </div>
-                <div class="flex items-center space-x-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                    <button onclick="startDownload({url: '${item.url}'})" class="p-2 text-accent hover:text-primary hover:bg-white/5 rounded-lg transition-colors" data-tooltip="Re-open">
-                        <i data-feather="external-link" class="w-4 h-4"></i>
-                    </button>
-                    <button onclick="removeFromLibrary('${item.url}')" class="p-2 text-red-400 hover:text-red-300 hover:bg-white/5 rounded-lg transition-colors" data-tooltip="Delete">
-                        <i data-feather="trash-2" class="w-4 h-4"></i>
-                    </button>
-                </div>
+                <p class="empty-state-text">No matches found.</p>
             </div>
         `;
-    }).join('');
+        feather.replace();
+        return;
+    }
+
+    // Apply sort
+    if (librarySortMode === 'artist') {
+        lib.sort((a, b) => a.artist.localeCompare(b.artist, undefined, { sensitivity: 'base' }));
+    } else if (librarySortMode === 'title') {
+        lib.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
+    }
+    // 'recent' uses the natural order (already sorted by date desc from saveToLibrary)
+
+    // Render: grouped or flat
+    if (librarySortMode === 'artist') {
+        // Group by artist
+        const groups = {};
+        lib.forEach(item => {
+            const key = item.artist || 'Unknown Artist';
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(item);
+        });
+
+        let html = '';
+        Object.keys(groups).forEach(artistName => {
+            const items = groups[artistName];
+            html += `
+                <div class="library-group-header">
+                    <span class="library-group-header-name">${artistName}</span>
+                    <span class="library-group-header-count">${items.length} ${items.length === 1 ? 'song' : 'songs'}</span>
+                </div>
+            `;
+            items.forEach(item => {
+                html += renderLibraryItem(item);
+            });
+        });
+        container.innerHTML = html;
+    } else {
+        // Flat list
+        container.innerHTML = lib.map(item => renderLibraryItem(item)).join('');
+    }
 
     feather.replace();
 }

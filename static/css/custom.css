@@ -679,3 +679,72 @@ body { background-color: var(--bg-body); color: var(--text-primary); }
   opacity: 1;
   transform: translate(-50%, 0) scale(1);
 }
+
+
+/* ─── Library Sort Pills ─────────────────────────────────────────────────── */
+
+.library-sort-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.library-sort-pill:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--border-base);
+  color: var(--text-primary);
+}
+
+.library-sort-pill.active {
+  border-color: var(--accent-1);
+  background: rgba(var(--accent-1-rgb), 0.1);
+  color: var(--accent-1);
+  box-shadow: 0 0 0 1px var(--accent-1), 0 0 8px rgba(var(--accent-1-rgb), 0.1);
+}
+
+
+/* ─── Library Group Headers ──────────────────────────────────────────────── */
+
+.library-group-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.25rem;
+  background: var(--bg-surface);
+  border-left: 2px solid var(--accent-1);
+  border-radius: 0 0.5rem 0.5rem 0;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.library-group-header-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.library-group-header-count {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: rgba(var(--accent-1-rgb), 0.1);
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+}
+

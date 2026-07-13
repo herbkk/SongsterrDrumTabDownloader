@@ -9,3 +9,4 @@ downloads/
 *.log
 .agents
 skills-lock.json
+GEMINI.md

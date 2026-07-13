@@ -3,9 +3,16 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Songsterr Drum Tab Downloader</title>
     <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
+
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#06b6d4">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/static/img/icon-192.png">
 
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -233,7 +240,7 @@
                 </div>
 
                 <!-- Library Panel -->
-                <div id="panel-library" class="space-y-6 hidden transition-opacity duration-300">
+                <div id="panel-library" class="space-y-4 hidden transition-opacity duration-300">
                     <div class="flex items-center justify-between">
                         <h3 class="text-lg font-medium text-primary flex items-center">
                             <i data-feather="book" class="w-5 h-5 mr-2 text-accent"></i>
@@ -246,7 +253,38 @@
                         </button>
                     </div>
 
-                    <div id="library-list" class="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar -mr-2 pr-2">
+                    <!-- Library Controls -->
+                    <div id="library-controls" class="flex items-center justify-between gap-4 mb-2">
+                        <!-- Sort Pills -->
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="text-[11px] font-medium text-muted uppercase tracking-wider mr-1">Sort</span>
+                            <button class="library-sort-pill active" data-sort="recent" onclick="setLibrarySort('recent')">
+                                <i data-feather="clock" class="w-3 h-3"></i> Recent
+                            </button>
+                            <button class="library-sort-pill" data-sort="artist" onclick="setLibrarySort('artist')">
+                                <i data-feather="user" class="w-3 h-3"></i> Artist
+                            </button>
+                            <button class="library-sort-pill" data-sort="title" onclick="setLibrarySort('title')">
+                                <i data-feather="type" class="w-3 h-3"></i> Title
+                            </button>
+                        </div>
+
+                        <!-- Filter Input -->
+                        <div class="relative flex-1 max-w-[200px]">
+                            <i data-feather="search" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"></i>
+                            <input type="text" id="library-filter-input"
+                                class="block w-full pl-9 pr-8 py-1.5 bg-input border border-base rounded-lg text-primary placeholder-slate-500 input-themed transition-all outline-none text-sm"
+                                placeholder="Search..." autocomplete="off"
+                                oninput="onLibraryFilterInput()">
+                            <button id="library-filter-clear"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-primary p-0.5 rounded transition-colors hidden"
+                                onclick="clearLibraryFilter()">
+                                <i data-feather="x" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="library-list" class="space-y-3 max-h-[55vh] overflow-y-auto custom-scrollbar -mr-2 pr-2">
                         <!-- Populated by JS -->
                         <div class="empty-state">
                             <div class="empty-state-icon flex items-center justify-center">
@@ -586,6 +624,19 @@
     <!-- App Logic -->
     <script src="/static/js/mapper.js"></script>
     <script src="/static/js/app.js"></script>
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(registration => {
+                    console.log('ServiceWorker registered:', registration.scope);
+                }).catch(err => {
+                    console.log('ServiceWorker registration failed:', err);
+                });
+            });
+        }
+    </script>
 </body>
 
 </html>
