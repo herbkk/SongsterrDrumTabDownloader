@@ -15,7 +15,7 @@ from flask import Flask, render_template, request, jsonify, send_from_directory,
 
 from downloader.api import search_songs
 from downloader.scraper import download_drum_track
-from downloader.xml_generator import generate_musicxml, get_unmapped_frets, DRUM_MAPPING, generate_measure_preview_xml, calculate_playback_map
+from downloader.xml_generator import generate_musicxml, get_unmapped_frets, DRUM_MAPPING, generate_measure_preview_xml, calculate_playback_map, calculate_swing_map
 
 # ─── Configuration ──────────────────────────────────────────────────────────────
 
@@ -484,6 +484,7 @@ def _proceed_with_generation(task_id: str, track_data: dict, artist: str, title:
             xml_string = f.read()
             
         playback_map = calculate_playback_map(track_data.get("measures", []))
+        swing_map = calculate_swing_map(track_data.get("measures", []))
         
         base_tempo = 120
         automations = track_data.get("automations", {})
@@ -502,6 +503,7 @@ def _proceed_with_generation(task_id: str, track_data: dict, artist: str, title:
             "title": title,
             "xml_string": xml_string,
             "playback_map": playback_map,
+            "swing_map": swing_map,
             "base_tempo": base_tempo
         }
 

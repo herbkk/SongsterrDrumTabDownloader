@@ -748,3 +748,26 @@ def calculate_playback_map(measures: list[dict]) -> list[int]:
         i += 1
         
     return playback_sequence
+
+def calculate_swing_map(measures: list[dict]) -> dict:
+    """
+    Returns a dictionary mapping measure indices (0-based) to their active swing type.
+    Swing types can be 'Eighth', 'Sixteenth', or None.
+    """
+    swing_map = {}
+    current_swing = None
+    
+    for i, m in enumerate(measures):
+        triplet_feel = m.get("tripletFeel", m.get("feel", m.get("swing", "")))
+        feel_str = str(triplet_feel).lower()
+        if feel_str in ["eighths", "true", "8th", "eighth", "swing"]:
+            current_swing = "Eighth"
+        elif feel_str in ["16ths", "16th", "sixteenth", "sixteenths"]:
+            current_swing = "Sixteenth"
+        elif feel_str in ["none", "false", "off", "straight"]:
+            current_swing = None
+            
+        if current_swing:
+            swing_map[i] = current_swing
+            
+    return swing_map

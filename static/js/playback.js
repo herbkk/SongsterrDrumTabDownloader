@@ -64,10 +64,11 @@ class DrumPlaybackEngine {
         this.volume = 0.8;
     }
 
-    async init(osmdInstance, currentBpm, playbackMap = null) {
+    async init(osmdInstance, currentBpm, playbackMap = null, swingMap = null) {
         this.osmd = osmdInstance;
         this.bpm = currentBpm || 120;
         this.playbackMap = playbackMap || [];
+        this.swingMap = swingMap || {};
         this.mapIndex = 0;
         
         if (!this.isReady) {
@@ -302,14 +303,45 @@ class DrumPlaybackEngine {
             const currentMeasureIndex = this.osmd.cursor.iterator.CurrentMeasureIndex;
             
             let linearWholeNotes = 0;
+            let noteLocalTime = 0;
             if (this.linearStartTimes && this.measureStartTimes && this.mapIndex < this.linearStartTimes.length) {
-                const noteLocalTime = this.osmd.cursor.iterator.currentTimeStamp.RealValue - this.measureStartTimes[currentMeasureIndex];
+                noteLocalTime = this.osmd.cursor.iterator.currentTimeStamp.RealValue - this.measureStartTimes[currentMeasureIndex];
                 linearWholeNotes = this.linearStartTimes[this.mapIndex] + noteLocalTime;
             } else {
                 linearWholeNotes = this.osmd.cursor.iterator.currentTimeStamp.RealValue;
+                if (this.measureStartTimes && this.measureStartTimes[currentMeasureIndex] !== undefined) {
+                    noteLocalTime = linearWholeNotes - this.measureStartTimes[currentMeasureIndex];
+                } else {
+                    noteLocalTime = linearWholeNotes % 1; // Fallback
+                }
             }
 
-            const deltaWholeNotes = linearWholeNotes - this.playbackStartWholeNotes;
+            let swingDelayWholeNotes = 0;
+            let swingType = this.swingMap ? this.swingMap[currentMeasureIndex] : null;
+
+            if (swingType && swingType !== "None" && swingType !== "Straight") {
+                const swingStr = String(swingType).toLowerCase();
+                
+                if (swingStr.includes("16") || swingStr.includes("sixteenth")) {
+                    // 16th note swing
+                    const sixteenths = noteLocalTime * 16;
+                    const remainder = sixteenths % 2; // Even is on-beat, odd is off-beat
+                    if (Math.abs(remainder - 1.0) < 0.05) {
+                        // Off-beat 16th note shifted from 1/2 of an 8th to 2/3 of an 8th
+                        swingDelayWholeNotes = 1.0 / 48.0;
+                    }
+                } else {
+                    // 8th note swing (default)
+                    const eighths = noteLocalTime * 8;
+                    const remainder = eighths % 2; // Even is on-beat, odd is off-beat
+                    if (Math.abs(remainder - 1.0) < 0.05) {
+                        // Off-beat 8th note shifted from 1/2 of a quarter to 2/3 of a quarter
+                        swingDelayWholeNotes = 1.0 / 24.0;
+                    }
+                }
+            }
+
+            const deltaWholeNotes = linearWholeNotes - this.playbackStartWholeNotes + swingDelayWholeNotes;
             const beats = deltaWholeNotes * 4;
             const secondsPerBeat = 60.0 / this.bpm;
             const absoluteEventTime = this.playbackStartTime + (beats * secondsPerBeat);

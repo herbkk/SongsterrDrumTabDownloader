@@ -809,6 +809,7 @@ async function showSuccess(result) {
     // Save string and map for stem toggling
     window.currentXmlString = result.xml_string;
     window.currentPlaybackMap = result.playback_map;
+    window.currentSwingMap = result.swing_map;
     window.currentBaseTempo = result.base_tempo || 120;
 
     // Render OSMD
@@ -831,7 +832,7 @@ async function showSuccess(result) {
             if (window.playbackEngine) {
                 let bpmInput = document.getElementById('bpm-input').value;
                 let currentBpm = bpmInput ? parseFloat(bpmInput) : window.currentBaseTempo; // fallback
-                window.playbackEngine.init(osmdInstance, currentBpm, result.playback_map);
+                window.playbackEngine.init(osmdInstance, currentBpm, result.playback_map, result.swing_map);
             }
 
             // Show audio buttons
@@ -1283,7 +1284,7 @@ function toggleStemDirection() {
                 if (window.playbackEngine) {
                     let bpmInput = document.getElementById('bpm-input').value;
                     let currentBpm = bpmInput ? parseFloat(bpmInput) : 120;
-                    window.playbackEngine.init(osmdInstance, currentBpm);
+                    window.playbackEngine.init(osmdInstance, currentBpm, window.currentPlaybackMap, window.currentSwingMap);
                 }
             });
         }, () => {
