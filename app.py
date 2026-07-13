@@ -15,7 +15,7 @@ from flask import Flask, render_template, request, jsonify, send_from_directory,
 
 from downloader.api import search_songs
 from downloader.scraper import download_drum_track
-from downloader.xml_generator import generate_musicxml, get_unmapped_frets, DRUM_MAPPING, generate_measure_preview_xml
+from downloader.xml_generator import generate_musicxml, get_unmapped_frets, DRUM_MAPPING, generate_measure_preview_xml, calculate_playback_map
 
 # ─── Configuration ──────────────────────────────────────────────────────────────
 
@@ -482,6 +482,15 @@ def _proceed_with_generation(task_id: str, track_data: dict, artist: str, title:
         # Read the raw XML string so we can pass it to the frontend for OSMD rendering
         with open(xml_path, 'r', encoding='utf-8') as f:
             xml_string = f.read()
+            
+        playback_map = calculate_playback_map(track_data.get("measures", []))
+        
+        base_tempo = 120
+        automations = track_data.get("automations", {})
+        tempo_list = automations.get("tempo", [])
+        if tempo_list and len(tempo_list) > 0:
+            first_tempo = tempo_list[0]
+            base_tempo = first_tempo.get("bpm", 120) if isinstance(first_tempo, dict) else int(first_tempo)
 
         progress_callback("Done!", 1.0)
 
@@ -491,7 +500,9 @@ def _proceed_with_generation(task_id: str, track_data: dict, artist: str, title:
             "downloadUrl": f"/downloads/{final_filename}",
             "artist": artist,
             "title": title,
-            "xml_string": xml_string
+            "xml_string": xml_string,
+            "playback_map": playback_map,
+            "base_tempo": base_tempo
         }
 
     except Exception as e:

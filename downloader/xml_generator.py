@@ -57,6 +57,7 @@ DRUM_MAPPING = {
     
     # Percussion
     56: {"step": "G", "octave": 5, "notehead": "triangle", "name": "Cowbell"}, # Cowbell
+    54: {"step": "B", "octave": 5, "notehead": "diamond", "name": "Tambourine"}, # Tambourine
     31: {"step": "G", "octave": 4, "notehead": "x", "name": "Sticks / Click"}, # Sticks/Click
 }
 
@@ -684,3 +685,50 @@ def generate_measure_preview_xml(track_data: dict, measure_index: int, highlight
     dummy_track = {"measures": target_measures}
     
     return generator.generate(dummy_track, None)
+
+def calculate_playback_map(measures: list[dict]) -> list[int]:
+    """
+    Simulates the playback path through the measures array, handling repeats and alternate endings.
+    Returns an ordered list of measure indices (0-based) representing the fully unrolled song.
+    """
+    playback_sequence = []
+    
+    i = 0
+    repeat_start_idx = 0
+    current_pass = 1
+    max_passes = 1
+    processed_repeat_starts = set()
+    
+    while i < len(measures):
+        m = measures[i]
+        
+        if m.get("repeatStart") and i not in processed_repeat_starts:
+            repeat_start_idx = i
+            current_pass = 1
+            max_passes = 1
+            processed_repeat_starts.add(i)
+            
+        alt_endings = m.get("alternateEnding")
+        
+        should_play = True
+        if alt_endings:
+            # alt_endings is a list of integers, e.g., [1, 2]
+            if current_pass not in alt_endings:
+                should_play = False
+                
+        if should_play:
+            playback_sequence.append(i)
+            
+            repeat_close = m.get("repeat")
+            if repeat_close:
+                times = int(repeat_close) if isinstance(repeat_close, int) else 2
+                max_passes = max(max_passes, times)
+                
+                if current_pass < max_passes:
+                    current_pass += 1
+                    i = repeat_start_idx
+                    continue
+                
+        i += 1
+        
+    return playback_sequence

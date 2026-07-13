@@ -806,34 +806,43 @@ async function showSuccess(result) {
 
     updateStemButtonIcon();
 
-    // Save string for stem toggling
+    // Save string and map for stem toggling
     window.currentXmlString = result.xml_string;
+    window.currentPlaybackMap = result.playback_map;
+    window.currentBaseTempo = result.base_tempo || 120;
 
     // Render OSMD
     const osmdContainer = document.getElementById('osmd-container');
-    osmdContainer.innerHTML = ''; // Clear previous
-
-    osmdInstance = createConfiguredOSMD(osmdContainer, false);
-
-    osmdInstance.load(result.xml_string).then(() => {
-        osmdInstance.render();
+    if (osmdContainer) {
+        osmdContainer.innerHTML = ''; // Clear previous
         
-        // Initialize Audio Playback
-        if (window.playbackEngine) {
-            let bpmInput = document.getElementById('bpm-input').value;
-            let currentBpm = bpmInput ? parseFloat(bpmInput) : 120; // fallback
-            window.playbackEngine.init(osmdInstance, currentBpm);
+        // Re-instantiate OSMD to avoid memory leaks or rendering state bugs between songs
+        osmdInstance = createConfiguredOSMD(osmdContainer, false);
+        
+        runWithOSMDLoader(null, () => {
+            return osmdInstance.load(result.xml_string).then(() => {
+                osmdInstance.render();
+            });
+        }, () => {
+            // Success Callback
+            
+            // Initialize Audio Playback
+            if (window.playbackEngine) {
+                let bpmInput = document.getElementById('bpm-input').value;
+                let currentBpm = bpmInput ? parseFloat(bpmInput) : window.currentBaseTempo; // fallback
+                window.playbackEngine.init(osmdInstance, currentBpm, result.playback_map);
+            }
             
             // Show audio buttons
             document.getElementById('btn-audio-play').classList.remove('hidden');
             document.getElementById('btn-audio-play').classList.add('flex');
             document.getElementById('btn-audio-stop').classList.remove('hidden');
             document.getElementById('btn-audio-stop').classList.add('flex');
-        }
-    }).catch(err => {
-        console.error("OSMD Load Error:", err);
-        showError("Failed to render sheet music preview.");
-    });
+        }, (err) => {
+            console.error("OSMD Load Error:", err);
+            showError("Failed to render sheet music preview.");
+        });
+    }
 }
 
 // --- Audio Playback Controls ---
@@ -858,15 +867,23 @@ function stopPlayback() {
 }
 
 function updateAudioPlaybackUI() {
+    const playBtn = document.getElementById('btn-audio-play');
     const playIcon = document.getElementById('icon-audio-play');
     const pauseIcon = document.getElementById('icon-audio-pause');
     
     if (window.playbackEngine && window.playbackEngine.isPlaying) {
         playIcon.classList.add('hidden');
         pauseIcon.classList.remove('hidden');
+        if (playBtn) playBtn.setAttribute('data-tooltip', 'Pause Audio');
     } else {
         playIcon.classList.remove('hidden');
         pauseIcon.classList.add('hidden');
+        if (playBtn) playBtn.setAttribute('data-tooltip', 'Play Audio');
+    }
+    
+    // Refresh tooltip if visible
+    if (window.tooltipManager && window.tooltipManager.currentTarget === playBtn) {
+        window.tooltipManager.showTooltip(playBtn);
     }
 }
 
