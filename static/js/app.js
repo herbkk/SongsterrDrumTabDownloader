@@ -24,6 +24,7 @@ window.osmdDarkStaff = "#6d6d6d";
 window.osmdDarkNote = "#cacaca";
 
 import { initTheme, renderThemePicker, renderBaseThemePicker, setBaseTheme, setTheme } from './themeManager.js';
+import { DownloadManager } from './downloadManager.js';
 import { saveToLibrary, getLibrary, renderLibrary, librarySortMode } from './storageManager.js';
 
 // Search Elements
@@ -44,18 +45,12 @@ const progressBar = document.getElementById('progress-bar');
 const toast = document.getElementById('toast');
 const toastMessage = document.getElementById('toast-message');
 
-let currentEventSource = null;
-let currentTaskId = null;
 let searchTimeout = null;
 let currentFormat = 'musicxml';
 let activeTab = 'search';
 window.activeTab = activeTab;
 
 // Batch Processing State
-let batchQueue = [];
-let batchQueueTotal = 0;
-let batchQueueCompleted = 0;
-let isBatchProcessing = false;
 let isBatchModeUI = false;
 
 // Resize Observer for consistent OSMD rendering
@@ -368,11 +363,109 @@ function validateUrlInput() {
 urlInput.addEventListener('input', validateUrlInput);
 document.getElementById('batch-input').addEventListener('input', validateUrlInput);
 
-// --- Download Logic ---
+// --- Download Manager Integration ---
+const downloadManager = new DownloadManager();
+
+downloadManager.addEventListener('batch-start', (e) => {
+    document.getElementById('batch-progress-container').classList.remove('hidden');
+    updateBatchProgressUI(0, e.detail.total);
+});
+
+downloadManager.addEventListener('batch-progress', (e) => {
+    updateBatchProgressUI(e.detail.completed, e.detail.total);
+    progressTitle.innerText = `Downloading item ${e.detail.completed + 1} of ${e.detail.total}`;
+});
+
+downloadManager.addEventListener('batch-item-done', async (e) => {
+    const result = e.detail.result;
+    if (currentFormat === 'pdf') {
+        progressStep.innerText = 'Ghost rendering PDF...';
+        try {
+            await generateGhostPDF(result.xml_string, result.artist, result.title);
+        } catch (err) {
+            console.error("Ghost PDF Error", err);
+            showError("Failed to render PDF for " + result.title);
+        }
+    }
+});
+
+downloadManager.addEventListener('batch-complete', () => {
+    updateBatchProgressUI(downloadManager.batchQueueTotal, downloadManager.batchQueueTotal); // Hits 100%
+    setTimeout(() => {
+        resetUI();
+        switchTab('library');
+        showSuccessToast("Batch download completed!");
+    }, 1000);
+});
+
+downloadManager.addEventListener('download-start', (e) => {
+    if (window.playbackEngine && window.playbackEngine.isPlaying) {
+        stopPlayback();
+    }
+
+    panels.search.classList.add('hidden');
+    panels.url.classList.add('hidden');
+    tabs.search.parentElement.classList.add('hidden');
+    panels.result.classList.add('hidden');
+    panels.result.classList.remove('flex');
+
+    panels.progress.classList.remove('hidden');
+    panels.progress.classList.add('flex');
+    panels.progress.parentElement.classList.add('progress-pulse');
+
+    progressBar.style.width = '0%';
+    progressStep.innerText = 'Connecting to server...';
+});
+
+downloadManager.addEventListener('download-progress', (e) => {
+    progressBar.style.width = `${e.detail.progress * 100}%`;
+    progressStep.innerText = e.detail.step;
+});
+
+downloadManager.addEventListener('download-resume', (e) => {
+    const panelTrackSelection = document.getElementById('panel-track-selection');
+    if (panelTrackSelection) {
+        panelTrackSelection.classList.add('hidden');
+        panelTrackSelection.classList.remove('flex');
+    }
+
+    panels.mapping.classList.add('hidden');
+    panels.mapping.classList.remove('flex');
+
+    panels.progress.classList.remove('hidden');
+    panels.progress.classList.add('flex');
+    panels.progress.parentElement.classList.add('progress-pulse');
+    progressStep.innerText = e.detail.step;
+});
+
+downloadManager.addEventListener('download-complete', (e) => {
+    showSuccess(e.detail.result, e.detail.url);
+});
+
+downloadManager.addEventListener('requires-mapping', (e) => {
+    showMappingUI(e.detail.unmapped_frets, e.detail.song_url);
+});
+
+downloadManager.addEventListener('requires-track-selection', (e) => {
+    showTrackSelectionUI(e.detail.tracks);
+});
+
+downloadManager.addEventListener('download-error', (e) => {
+    showError(e.detail.error);
+    resetUI();
+});
+
+function getDownloadConfig() {
+    return {
+        format: currentFormat,
+        globalMapping: globalDrumMapping,
+        stemDirection: document.getElementById('style-stem-direction')?.value || 'up',
+        bpm: document.getElementById('bpm-input')?.value ? parseInt(document.getElementById('bpm-input').value, 10) : undefined
+    };
+}
 
 function startDownloadFromSearch(songId, artist, title) {
-    isBatchProcessing = false;
-    startDownload({ songId, artist, title });
+    downloadManager.startDownloadFromSearch(songId, artist, title, getDownloadConfig());
 }
 
 function startDownloadFromUrl() {
@@ -383,295 +476,29 @@ function startDownloadFromUrl() {
     const urls = text.split('\n').map(u => u.trim()).filter(u => u.includes('songsterr.com/') && (u.includes('-s') || u.includes('songid=')));
     if (urls.length === 0) return;
 
-    if (urls.length > 1) {
-        batchQueue = urls;
-        batchQueueTotal = urls.length;
-        batchQueueCompleted = 0;
-        isBatchProcessing = true;
-
-        // Show batch progress UI
-        document.getElementById('batch-progress-container').classList.remove('hidden');
-        updateBatchProgressUI();
-
-        processNextBatchItem();
-    } else {
-        isBatchProcessing = false;
-        startDownload({ url: urls[0] });
-    }
+    downloadManager.startDownloadFromUrls(urls, getDownloadConfig());
 }
 
-function updateBatchProgressUI() {
-    const completed = batchQueueCompleted;
-    const pct = batchQueueTotal > 0 ? (completed / batchQueueTotal) * 100 : 0;
-
-    document.getElementById('batch-progress-text').innerText = `Batch Progress (${completed}/${batchQueueTotal})`;
+function updateBatchProgressUI(completed, total) {
+    const pct = total > 0 ? (completed / total) * 100 : 0;
+    document.getElementById('batch-progress-text').innerText = `Batch Progress (${completed}/${total})`;
     document.getElementById('batch-progress-pct').innerText = `${Math.round(pct)}%`;
     document.getElementById('batch-progress-bar').style.width = `${pct}%`;
 }
 
-function processNextBatchItem() {
-    if (batchQueue.length === 0) {
-        isBatchProcessing = false;
-        updateBatchProgressUI(); // Hits 100%
-        setTimeout(() => {
-            resetUI();
-            switchTab('library');
-            showSuccessToast("Batch download completed!");
-        }, 1000);
-        return;
-    }
-
-    const nextUrl = batchQueue.shift();
-    progressTitle.innerText = `Downloading item ${batchQueueCompleted + 1} of ${batchQueueTotal}`;
-    startDownload({ url: nextUrl }, true);
+async function startDownload(payload) {
+    downloadManager.startDownload(payload, getDownloadConfig());
 }
 
-async function startDownload(payload, isBatchContinuation = false) {
-    if (window.playbackEngine && window.playbackEngine.isPlaying) {
-        stopPlayback();
-    }
-
-    payload.format = currentFormat;
-    payload.global_mapping = globalDrumMapping;
-    payload.stem_direction = document.getElementById('style-stem-direction')?.value || 'up';
-
-    const bpmVal = document.getElementById('bpm-input')?.value;
-    if (bpmVal) payload.bpm = parseInt(bpmVal, 10);
-
-    if (payload.url) {
-        currentDownloadUrl = payload.url;
-    } else if (payload.songId) {
-        if (payload.artist && payload.title) {
-            const safeArtist = payload.artist.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-            const safeTitle = payload.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-            currentDownloadUrl = `https://www.songsterr.com/a/wsa/${safeArtist}-${safeTitle}-drum-tab-s${payload.songId}`;
-        } else {
-            currentDownloadUrl = `https://www.songsterr.com/a/wsa/song-s${payload.songId}`;
-        }
-    }
-
-    const lib = getLibrary();
-    const existingItem = lib.find(i => i.url === currentDownloadUrl);
-    if (existingItem && existingItem.customMapping) {
-        Object.assign(payload.global_mapping, existingItem.customMapping);
-    }
-
-    // Hide inputs and old results, show progress
-    panels.search.classList.add('hidden');
-    panels.url.classList.add('hidden');
-    tabs.search.parentElement.classList.add('hidden'); // Hide tabs wrapper
-    panels.result.classList.add('hidden');
-    panels.result.classList.remove('flex');
-
-    panels.progress.classList.remove('hidden');
-    panels.progress.classList.add('flex');
-    panels.progress.parentElement.classList.add('progress-pulse');
-
-    progressBar.style.width = '0%';
-    progressStep.innerText = 'Connecting to server...';
-
-    try {
-        const res = await fetch('/api/download', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to start download');
-
-        currentTaskId = data.taskId;
-        listenToProgress(data.taskId);
-    } catch (err) {
-        showError(err.message);
-        resetUI();
-    }
-}
-
-function listenToProgress(taskId) {
-    if (currentEventSource) {
-        currentEventSource.close();
-    }
-
-    currentEventSource = new EventSource(`/api/status/${taskId}`);
-
-    currentEventSource.onmessage = function (event) {
-        const data = JSON.parse(event.data);
-
-        if (data.error) {
-            currentEventSource.close();
-            showError(data.error);
-            if (isBatchProcessing) {
-                setTimeout(processNextBatchItem, 2500);
-            } else {
-                resetUI();
-            }
-            return;
-        }
-
-        // Update UI
-        progressBar.style.width = `${data.progress * 100}%`;
-        progressStep.innerText = data.step;
-
-        if (data.status === 'done') {
-            currentEventSource.close();
-            showSuccess(data.result);
-        } else if (data.status === 'requires_mapping') {
-            currentEventSource.close();
-            showMappingUI(data.unmapped_frets, data.song_url || currentDownloadUrl);
-        } else if (data.status === 'requires_track_selection') {
-            currentEventSource.close();
-            showTrackSelectionUI(data.tracks);
-        } else if (data.status === 'error') {
-            currentEventSource.close();
-            showError(data.error || 'Download failed');
-            resetUI();
-        }
-    };
-
-    currentEventSource.onerror = function () {
-        currentEventSource.close();
-        showError('Lost connection to server');
-        resetUI();
-    };
-}
-
-// --- Mapping UI ---
-
-let currentInterceptMapper = null;
-
-function showMappingUI(frets, songUrl) {
-    // Widen the main container to give the OSMD previews more room
-    const mainCard = document.querySelector('main.glass-card');
-    mainCard.classList.remove('max-w-3xl');
-    mainCard.classList.add('max-w-6xl');
-
-    panels.progress.classList.add('hidden');
-    panels.progress.classList.remove('flex');
-    panels.progress.parentElement.classList.remove('progress-pulse');
-
-    panels.mapping.classList.remove('hidden');
-    panels.mapping.classList.add('flex');
-
-    const urlContainer = document.getElementById('mapping-song-url-container');
-    if (urlContainer) {
-        if (songUrl) {
-            urlContainer.innerHTML = `Source: <a href="${songUrl}" target="_blank" class="hover:underline hover:text-brand-300 font-medium">View Original Score on Songsterr</a>`;
-        } else {
-            urlContainer.innerHTML = '';
-        }
-    }
-
-    const container = document.getElementById('mapping-container');
-
-    // Build initial mapping object for these unknown frets
-    const initialMap = {};
-    frets.forEach(f_obj => {
-        initialMap[f_obj.fret] = {
-            name: `Drum ${f_obj.fret}`,
-            step: 'C',
-            octave: 5,
-            notehead: 'normal',
-            first_measure: f_obj.first_measure,
-            preview_xml: f_obj.preview_xml
-        };
-    });
-
-    currentInterceptMapper = new VisualMapper(container, initialMap, false, songUrl);
-}
-
-function showTrackSelectionUI(tracks) {
-    const mainCard = document.querySelector('main.glass-card');
-    mainCard.classList.remove('max-w-6xl');
-    mainCard.classList.add('max-w-3xl');
-
-    panels.progress.classList.add('hidden');
-    panels.progress.classList.remove('flex');
-    panels.progress.parentElement.classList.remove('progress-pulse');
-
-    const panelTrackSelection = document.getElementById('panel-track-selection');
-    panelTrackSelection.classList.remove('hidden');
-    panelTrackSelection.classList.add('flex');
-
-    const listContainer = document.getElementById('track-selection-list');
-    let html = '';
-    tracks.forEach(t => {
-        html += `
-            <div class="p-4 border-b border-subtle hover:bg-surface-hover cursor-pointer transition-colors flex justify-between items-center group" onclick="submitTrackSelection(${t.partId})">
-                <div>
-                    <div class="text-primary font-medium group-hover:text-accent transition-colors">${t.title}</div>
-                    <div class="text-xs text-secondary mt-1">Instrument: ${t.instrument} | Part ID: ${t.partId}</div>
-                </div>
-                <i data-feather="chevron-right" class="w-5 h-5 text-muted group-hover:text-accent"></i>
-            </div>
-        `;
-    });
-    listContainer.innerHTML = html;
-    feather.replace();
-
-    document.getElementById('cancel-track-btn').onclick = () => {
-        panelTrackSelection.classList.add('hidden');
-        panelTrackSelection.classList.remove('flex');
-        resetUI();
-    };
-}
-
-async function submitTrackSelection(partId) {
-    const panelTrackSelection = document.getElementById('panel-track-selection');
-    panelTrackSelection.classList.add('hidden');
-    panelTrackSelection.classList.remove('flex');
-
-    panels.progress.classList.remove('hidden');
-    panels.progress.classList.add('flex');
-    panels.progress.parentElement.classList.add('progress-pulse');
-    progressStep.innerText = 'Resuming download...';
-
-    try {
-        const res = await fetch('/api/download/resume_track', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ taskId: currentTaskId, partId: partId })
-        });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to resume download');
-
-        listenToProgress(currentTaskId);
-    } catch (err) {
-        showError(err.message);
-        resetUI();
-    }
+function submitTrackSelection(partId) {
+    downloadManager.submitTrackSelection(partId, getDownloadConfig());
 }
 
 async function submitMapping() {
     if (!currentInterceptMapper) return;
-
     const customMapping = currentInterceptMapper.getMapping();
     window.lastSubmittedCustomMapping = customMapping;
-
-    panels.mapping.classList.add('hidden');
-    panels.mapping.classList.remove('flex');
-
-    panels.progress.classList.remove('hidden');
-    panels.progress.classList.add('flex');
-    panels.progress.parentElement.classList.add('progress-pulse');
-    progressStep.innerText = 'Applying custom mapping...';
-
-    try {
-        const res = await fetch('/api/download/resume', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ taskId: currentTaskId, custom_mapping: customMapping })
-        });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to resume download');
-
-        listenToProgress(currentTaskId);
-    } catch (err) {
-        showError(err.message);
-        resetUI();
-    }
+    downloadManager.submitMapping(customMapping, getDownloadConfig());
 }
 
 // --- PDF & OSMD Engine ---
@@ -741,30 +568,11 @@ function loadOSMDLayoutSettings() {
 
 // --- Success & Reset ---
 
-async function showSuccess(result) {
+async function showSuccess(result, downloadUrl) {
     // Save to library history
-    if (currentDownloadUrl) {
-        saveToLibrary(result.artist, result.title, currentDownloadUrl, window.lastSubmittedCustomMapping);
+    if (downloadUrl) {
+        saveToLibrary(result.artist, result.title, downloadUrl, window.lastSubmittedCustomMapping);
         window.lastSubmittedCustomMapping = null;
-    }
-
-    if (isBatchProcessing) {
-        if (currentFormat === 'pdf') {
-            progressStep.innerText = 'Ghost rendering PDF...';
-            try {
-                await generateGhostPDF(result.xml_string, result.artist, result.title);
-            } catch (err) {
-                console.error("Ghost PDF Error", err);
-                showError("Failed to render PDF for " + result.title);
-            }
-        }
-
-        batchQueueCompleted++;
-        updateBatchProgressUI();
-
-        progressStep.innerText = 'Waiting before next request...';
-        setTimeout(processNextBatchItem, 2500);
-        return;
     }
 
     panels.progress.classList.add('hidden');
@@ -786,8 +594,8 @@ async function showSuccess(result) {
     document.getElementById('result-download-link').href = result.downloadUrl;
 
     const songsterrLink = document.getElementById('result-songsterr-link');
-    if (songsterrLink && currentDownloadUrl) {
-        songsterrLink.href = currentDownloadUrl;
+    if (songsterrLink && downloadUrl) {
+        songsterrLink.href = downloadUrl;
         songsterrLink.classList.remove('hidden');
         songsterrLink.classList.add('flex');
     } else if (songsterrLink) {
