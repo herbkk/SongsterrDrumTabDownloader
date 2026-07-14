@@ -242,6 +242,39 @@ class MusicXMLGenerator:
         # Build Part
         self.part = ET.SubElement(self.root, "part", id="P1")
 
+    def _preprocess_measure_context(self, measures: list[dict]):
+        """Extracts lookahead logic out of the main loop. Annotates measure dicts directly."""
+        active_ending = None
+
+        for mi, measure_data in enumerate(measures):
+            # 1. Repeats logic
+            if measure_data.get("repeatStart"):
+                times_to_play = 2
+                for future_m in measures[mi:]:
+                    if future_m.get("repeat"):
+                        times = future_m.get("repeat")
+                        times_to_play = int(times) if isinstance(times, int) else 2
+                        break
+                measure_data["effective_repeat_count"] = times_to_play
+
+            # 2. Alternate endings logic
+            alt_ending_list = measure_data.get("alternateEnding")
+            alt_ending = alt_ending_list[0] if alt_ending_list else None
+            
+            if alt_ending != active_ending:
+                active_ending = alt_ending
+
+            is_ending_end = False
+            if active_ending is not None:
+                next_alt = None
+                if mi + 1 < len(measures):
+                    next_alt_list = measures[mi + 1].get("alternateEnding")
+                    next_alt = next_alt_list[0] if next_alt_list else None
+                if next_alt != active_ending:
+                    is_ending_end = True
+            
+            measure_data["is_ending_end"] = is_ending_end
+
     def generate(self, track_data: dict, output_path: str):
         # 1. Collect all used frets to generate MIDI instruments
         used_frets = set()
@@ -288,6 +321,9 @@ class MusicXMLGenerator:
                             if prev_n:
                                 prev_n["tieStart"] = True
                         active_notes[f] = n
+
+        # Pre-process measure context (repeats, endings)
+        self._preprocess_measure_context(measures)
 
         active_ending = None
 
@@ -398,13 +434,7 @@ class MusicXMLGenerator:
 
             # Inject text indicator for repeats > 2
             if repeat_open:
-                times_to_play = 2
-                # Look ahead for the matching repeat count
-                for future_m in measures[mi:]:
-                    if future_m.get("repeat"):
-                        times_to_play = int(future_m.get("repeat")) if isinstance(future_m.get("repeat"), int) else 2
-                        break
-                
+                times_to_play = measure_data.get("effective_repeat_count", 2)
                 if times_to_play > 2:
                     dir_elem = ET.SubElement(measure_elem, "direction", placement="above")
                     dir_type = ET.SubElement(dir_elem, "direction-type")
@@ -415,16 +445,7 @@ class MusicXMLGenerator:
 
             # Barline / Repeats / Endings (Right)
             repeat_close = measure_data.get("repeat")
-            
-            # Look ahead to see if the ending bracket stops here
-            is_ending_end = False
-            if active_ending is not None:
-                next_alt = None
-                if mi + 1 < len(measures):
-                    next_alt_list = measures[mi + 1].get("alternateEnding")
-                    next_alt = next_alt_list[0] if next_alt_list else None
-                if next_alt != active_ending:
-                    is_ending_end = True
+            is_ending_end = measure_data.get("is_ending_end", False)
 
             if repeat_close or is_ending_end:
                 barline_right = ET.SubElement(measure_elem, "barline", location="right")
