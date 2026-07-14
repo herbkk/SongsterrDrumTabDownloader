@@ -26,6 +26,9 @@ window.osmdDarkNote = "#cacaca";
 import { initTheme, renderThemePicker, renderBaseThemePicker, setBaseTheme, setTheme } from './themeManager.js';
 import { DownloadManager } from './downloadManager.js';
 import { saveToLibrary, getLibrary, renderLibrary, librarySortMode } from './storageManager.js';
+import { DrumPlaybackEngine } from './playback.js';
+
+window.playbackEngine = new DrumPlaybackEngine();
 
 // Search Elements
 const searchInput = document.getElementById('search-input');
@@ -693,9 +696,41 @@ function updateAudioPlaybackUI() {
     }
 }
 
+let appCustomCursor = null;
+
 // Ensure audio stops if user navigates away or stems are toggled
-document.addEventListener('playback-stopped', () => {
+window.playbackEngine.addEventListener('playback-stopped', () => {
     updateAudioPlaybackUI();
+});
+
+window.playbackEngine.addEventListener('cursor-update', (e) => {
+    const ev = e.detail;
+    if (!appCustomCursor) {
+        appCustomCursor = document.createElement('div');
+        appCustomCursor.style.position = 'absolute';
+        appCustomCursor.style.zIndex = '999';
+        appCustomCursor.style.backgroundColor = "var(--accent-1)";
+        appCustomCursor.style.opacity = "0.45";
+        appCustomCursor.style.borderRadius = "6px";
+        appCustomCursor.style.pointerEvents = "none";
+        appCustomCursor.style.display = "none";
+    }
+    
+    if (ev.parent && appCustomCursor.parentElement !== ev.parent) {
+        ev.parent.appendChild(appCustomCursor);
+    }
+    
+    appCustomCursor.style.left = ev.left;
+    appCustomCursor.style.top = ev.top;
+    appCustomCursor.style.width = ev.width;
+    appCustomCursor.style.height = ev.height;
+    appCustomCursor.style.display = "block";
+});
+
+window.playbackEngine.addEventListener('cursor-hide', () => {
+    if (appCustomCursor) {
+        appCustomCursor.style.display = "none";
+    }
 });
 
 function svgToJpegDataUrl(svgElement) {

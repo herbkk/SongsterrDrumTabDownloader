@@ -39,8 +39,9 @@ const VISUAL_DRUM_MAP = {
 
 const OSMD_STEP_NAMES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
 
-class DrumPlaybackEngine {
+export class DrumPlaybackEngine extends EventTarget {
     constructor() {
+        super();
         this.audioContext = null;
         this.player = null;
         this.drumZone = null;
@@ -56,8 +57,8 @@ class DrumPlaybackEngine {
         this.lookahead = 25.0; // Polling interval
 
         this.cursorQueue = [];
+        this.cursorQueue = [];
         this.visualCursorTimer = null;
-        this.customCursor = null;
 
         this.isReady = false;
         this.drumZones = {}; // Stores multiple zones by pitch
@@ -218,23 +219,7 @@ class DrumPlaybackEngine {
 
         this.osmd.cursor.show();
 
-        // Setup Decoupled Visual Cursor
-        if (this.customCursor && this.customCursor.parentElement) {
-            this.customCursor.parentElement.removeChild(this.customCursor);
-        }
 
-        this.customCursor = document.createElement('div');
-        this.customCursor.style.position = 'absolute';
-        this.customCursor.style.zIndex = '999';
-        this.customCursor.style.backgroundColor = "var(--accent-1)";
-        this.customCursor.style.opacity = "0.45";
-        this.customCursor.style.borderRadius = "6px";
-        this.customCursor.style.pointerEvents = "none";
-        this.customCursor.style.display = "none";
-
-        if (this.osmd.cursor.cursorElement && this.osmd.cursor.cursorElement.parentElement) {
-            this.osmd.cursor.cursorElement.parentElement.appendChild(this.customCursor);
-        }
 
         // Hide the native OSMD cursor so it doesn't jump ahead visually
         if (this.osmd.cursor.cursorElement) {
@@ -258,7 +243,7 @@ class DrumPlaybackEngine {
         this.scheduler();
         this.visualLoop();
 
-        document.dispatchEvent(new CustomEvent('playback-started'));
+        this.dispatchEvent(new CustomEvent('playback-started'));
     }
 
     pause() {
@@ -276,7 +261,7 @@ class DrumPlaybackEngine {
         if (this.player && this.audioContext) {
             this.player.cancelQueue(this.audioContext);
         }
-        document.dispatchEvent(new CustomEvent('playback-paused'));
+        this.dispatchEvent(new CustomEvent('playback-paused'));
     }
 
     stop() {
@@ -288,10 +273,8 @@ class DrumPlaybackEngine {
                 this.osmd.cursor.cursorElement.style.opacity = "0.45"; // Restore native cursor visibility
             }
         }
-        if (this.customCursor) {
-            this.customCursor.style.display = "none";
-        }
-        document.dispatchEvent(new CustomEvent('playback-stopped'));
+        this.dispatchEvent(new CustomEvent('cursor-hide'));
+        this.dispatchEvent(new CustomEvent('playback-stopped'));
     }
 
     scheduler() {
@@ -479,28 +462,16 @@ class DrumPlaybackEngine {
         const currentTime = this.audioContext.currentTime;
 
         // Find all visual events that have passed and apply the most recent one
-        let updated = false;
+        let lastEv = null;
         while (this.cursorQueue.length > 0 && this.cursorQueue[0].time <= currentTime) {
-            const ev = this.cursorQueue.shift();
-            if (this.customCursor) {
-                if (ev.parent && this.customCursor.parentElement !== ev.parent) {
-                    ev.parent.appendChild(this.customCursor);
-                }
-                this.customCursor.style.left = ev.left;
-                this.customCursor.style.top = ev.top;
-                this.customCursor.style.width = ev.width;
-                this.customCursor.style.height = ev.height;
-                updated = true;
-            }
+            lastEv = this.cursorQueue.shift();
         }
 
-        if (updated && this.customCursor) {
-            this.customCursor.style.display = "block";
+        if (lastEv) {
+            this.dispatchEvent(new CustomEvent('cursor-update', { detail: lastEv }));
         }
 
         this.visualCursorTimer = requestAnimationFrame(() => this.visualLoop());
     }
 }
 
-// Global instance
-window.playbackEngine = new DrumPlaybackEngine();
