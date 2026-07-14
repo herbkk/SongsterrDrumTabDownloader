@@ -473,27 +473,7 @@ class MusicXMLGenerator:
             note_type, dots = get_note_type_info(dur_array, tuplet_val)
             
             if is_rest:
-                note = ET.SubElement(measure_elem, "note")
-                ET.SubElement(note, "rest")
-                ET.SubElement(note, "duration").text = str(ticks)
-                ET.SubElement(note, "voice").text = "1"
-                ET.SubElement(note, "type").text = note_type
-                for _ in range(dots):
-                    ET.SubElement(note, "dot")
-                    
-                if tuplet_val:
-                    normal_notes = 2
-                    if tuplet_val in (5, 6, 7): normal_notes = 4
-                    tm = ET.SubElement(note, "time-modification")
-                    ET.SubElement(tm, "actual-notes").text = str(tuplet_val)
-                    ET.SubElement(tm, "normal-notes").text = str(normal_notes)
-                    
-                if tuplet_start or tuplet_stop:
-                    notations = ET.SubElement(note, "notations")
-                    if tuplet_start:
-                        ET.SubElement(notations, "tuplet", type="start", bracket="yes")
-                    if tuplet_stop:
-                        ET.SubElement(notations, "tuplet", type="stop")
+                self._process_rest(measure_elem, ticks, note_type, dots, tuplet_val, tuplet_start, tuplet_stop)
                 continue
 
             notes = beat.get("notes", [])
@@ -505,168 +485,192 @@ class MusicXMLGenerator:
                 if not mapping:
                     mapping = get_fallback_drum(fret)
 
-                # Check for Flams/Drags (Grace notes)
-                num_graces = 0
-                if n.get("flam"): num_graces = 1
-                elif n.get("drag"): num_graces = 2
+                self._process_grace_notes(measure_elem, n, mapping, fret)
                 
-                for g_idx in range(num_graces):
-                    grace_elem = ET.SubElement(measure_elem, "note")
-                    ET.SubElement(grace_elem, "grace", slash="yes" if g_idx == 0 else "no")
-                    
-                    unpitched = ET.SubElement(grace_elem, "unpitched")
-                    ET.SubElement(unpitched, "display-step").text = mapping["step"]
-                    ET.SubElement(unpitched, "display-octave").text = str(mapping["octave"])
-                    
-                    if fret is not None:
-                        ET.SubElement(grace_elem, "instrument", id=f"P1-I{fret}")
-                    ET.SubElement(grace_elem, "voice").text = "1"
-                    ET.SubElement(grace_elem, "type").text = "16th"
-                    if self.stem_direction == "up":
-                        ET.SubElement(grace_elem, "stem").text = "up"
-                    elif self.stem_direction == "down":
-                        ET.SubElement(grace_elem, "stem").text = "down"
-                    if "notehead" in mapping:
-                        ET.SubElement(grace_elem, "notehead").text = mapping["notehead"]
-                
-                note_elem = ET.SubElement(measure_elem, "note")
-                
-                if is_chord:
-                    ET.SubElement(note_elem, "chord")
-                    
-                unpitched = ET.SubElement(note_elem, "unpitched")
-                ET.SubElement(unpitched, "display-step").text = mapping["step"]
-                ET.SubElement(unpitched, "display-octave").text = str(mapping["octave"])
-                
-                ET.SubElement(note_elem, "duration").text = str(ticks)
-                
-                # Tie handling
-                if n.get("tie") == "start":
-                    ET.SubElement(note_elem, "tie", type="start")
-                elif n.get("tie") == "stop":
-                    ET.SubElement(note_elem, "tie", type="stop")
-                
-                if fret is not None:
-                    ET.SubElement(note_elem, "instrument", id=f"P1-I{fret}")
-                
-                ET.SubElement(note_elem, "voice").text = "1"
-                
-                type_elem = ET.SubElement(note_elem, "type")
-                type_elem.text = note_type
-                if n.get("ghost"):
-                    type_elem.set("size", "cue")
-                    
-                for _ in range(dots):
-                    ET.SubElement(note_elem, "dot")
-                    
-                if tuplet_val:
-                    normal_notes = 2
-                    if tuplet_val in (5, 6, 7): normal_notes = 4
-                    tm = ET.SubElement(note_elem, "time-modification")
-                    ET.SubElement(tm, "actual-notes").text = str(tuplet_val)
-                    ET.SubElement(tm, "normal-notes").text = str(normal_notes)
-                
-                # Stem direction
-                if self.stem_direction == "up":
-                    ET.SubElement(note_elem, "stem").text = "up"
-                elif self.stem_direction == "down":
-                    ET.SubElement(note_elem, "stem").text = "down"
-                
-                # Notehead
-                if "notehead" in mapping:
-                    ET.SubElement(note_elem, "notehead").text = mapping["notehead"]
-                    
-                # Color Highlight
-                if n.get("highlight"):
-                    note_elem.set("color", "#EF4444")
-                    notehead_elem = note_elem.find("notehead")
-                    if notehead_elem is None:
-                        notehead_elem = ET.SubElement(note_elem, "notehead")
-                        notehead_elem.text = "normal"
-                    notehead_elem.set("color", "#EF4444")
-                elif mapping.get("is_fallback") and not self.disable_fallback_colors:
-                    note_elem.set("color", "#F59E0B")
-                    notehead_elem = note_elem.find("notehead")
-                    if notehead_elem is None:
-                        notehead_elem = ET.SubElement(note_elem, "notehead")
-                        notehead_elem.text = "normal"
-                    notehead_elem.set("color", "#F59E0B")
-                    
-                # Articulations (ghost notes)
-                if n.get("ghost"):
-                    notehead_elem = note_elem.find("notehead")
-                    if notehead_elem is None:
-                        ET.SubElement(note_elem, "notehead", parentheses="yes").text = "normal"
-                    else:
-                        notehead_elem.set("parentheses", "yes")
-
-                # Articulations & Slurs
-                articulations = []
-                if n.get("accentuated") == 1 or n.get("accent"): articulations.append("accent")
-                if n.get("accentuated") == 2 or n.get("heavyAccent") or n.get("marcato"): articulations.append("strong-accent")
-                if n.get("staccato"): articulations.append("staccato")
-                
-                slur_start = n.get("slur") == "start" or n.get("legato") == "start"
-                slur_stop = n.get("slur") == "stop" or n.get("legato") == "stop"
-                tie_start = n.get("tieStart")
-                tie_stop = n.get("tie")
-                fermata = n.get("fermata")
-                roll = n.get("roll") or n.get("tremolo")
-
-                if articulations or slur_start or slur_stop or tie_start or tie_stop or tuplet_start or tuplet_stop or fermata or roll:
-                    notations = note_elem.find("notations")
-                    if notations is None:
-                        notations = ET.SubElement(note_elem, "notations")
-                    
-                    if tie_start:
-                        ET.SubElement(notations, "tied", type="start")
-                    if tie_stop:
-                        ET.SubElement(notations, "tied", type="stop")
-                    
-                    if slur_start:
-                        ET.SubElement(notations, "slur", type="start", number="1")
-                    if slur_stop:
-                        ET.SubElement(notations, "slur", type="stop", number="1")
-                        
-                    # Tuplets
-                    # Only output tuplet notations on the FIRST note of a chord to avoid duplicate brackets
-                    if not is_chord:
-                        if tuplet_start:
-                            ET.SubElement(notations, "tuplet", type="start", bracket="yes")
-                        if tuplet_stop:
-                            ET.SubElement(notations, "tuplet", type="stop")
-                            
-                    if fermata:
-                        ET.SubElement(notations, "fermata")
-                        
-                    if articulations:
-                        art_elem = notations.find("articulations")
-                        if art_elem is None:
-                            art_elem = ET.SubElement(notations, "articulations")
-                        for art in articulations:
-                            if art == "strong-accent":
-                                ET.SubElement(art_elem, "strong-accent", placement="above", type="up")
-                            elif art == "accent":
-                                ET.SubElement(art_elem, "accent", placement="above", **{"default-y": "15"})
-                            elif art == "staccato":
-                                ET.SubElement(art_elem, "staccato", placement="above")
-                            else:
-                                ET.SubElement(art_elem, art)
-                                
-                    if roll:
-                        orn_elem = notations.find("ornaments")
-                        if orn_elem is None:
-                            orn_elem = ET.SubElement(notations, "ornaments")
-                        ET.SubElement(orn_elem, "tremolo", type="single").text = "3"
-
-                # Tie handling (for playback)
-                if tie_start:
-                    ET.SubElement(note_elem, "tie", type="start")
-                if tie_stop:
-                    ET.SubElement(note_elem, "tie", type="stop")
+                note_elem = self._process_note_core(measure_elem, n, mapping, fret, is_chord, ticks, note_type, dots, tuplet_val)
+                self._process_note_notations(note_elem, n, is_chord, tuplet_start, tuplet_stop)
 
         # Apply auto-beaming after all notes are added to the measure
         apply_auto_beaming(measure_elem, DIVISIONS)
+
+    def _process_rest(self, measure_elem: ET.Element, ticks: int, note_type: str, dots: int, tuplet_val: int, tuplet_start: bool, tuplet_stop: bool):
+        note = ET.SubElement(measure_elem, "note")
+        ET.SubElement(note, "rest")
+        ET.SubElement(note, "duration").text = str(ticks)
+        ET.SubElement(note, "voice").text = "1"
+        ET.SubElement(note, "type").text = note_type
+        for _ in range(dots):
+            ET.SubElement(note, "dot")
+            
+        if tuplet_val:
+            normal_notes = 2
+            if tuplet_val in (5, 6, 7): normal_notes = 4
+            tm = ET.SubElement(note, "time-modification")
+            ET.SubElement(tm, "actual-notes").text = str(tuplet_val)
+            ET.SubElement(tm, "normal-notes").text = str(normal_notes)
+            
+        if tuplet_start or tuplet_stop:
+            notations = ET.SubElement(note, "notations")
+            if tuplet_start:
+                ET.SubElement(notations, "tuplet", type="start", bracket="yes")
+            if tuplet_stop:
+                ET.SubElement(notations, "tuplet", type="stop")
+
+    def _process_grace_notes(self, measure_elem: ET.Element, n: dict, mapping: dict, fret: int):
+        num_graces = 0
+        if n.get("flam"): num_graces = 1
+        elif n.get("drag"): num_graces = 2
+        
+        for g_idx in range(num_graces):
+            grace_elem = ET.SubElement(measure_elem, "note")
+            ET.SubElement(grace_elem, "grace", slash="yes" if g_idx == 0 else "no")
+            
+            unpitched = ET.SubElement(grace_elem, "unpitched")
+            ET.SubElement(unpitched, "display-step").text = mapping["step"]
+            ET.SubElement(unpitched, "display-octave").text = str(mapping["octave"])
+            
+            if fret is not None:
+                ET.SubElement(grace_elem, "instrument", id=f"P1-I{fret}")
+            ET.SubElement(grace_elem, "voice").text = "1"
+            ET.SubElement(grace_elem, "type").text = "16th"
+            if self.stem_direction == "up":
+                ET.SubElement(grace_elem, "stem").text = "up"
+            elif self.stem_direction == "down":
+                ET.SubElement(grace_elem, "stem").text = "down"
+            if "notehead" in mapping:
+                ET.SubElement(grace_elem, "notehead").text = mapping["notehead"]
+
+    def _process_note_core(self, measure_elem: ET.Element, n: dict, mapping: dict, fret: int, is_chord: bool, ticks: int, note_type: str, dots: int, tuplet_val: int) -> ET.Element:
+        note_elem = ET.SubElement(measure_elem, "note")
+        
+        if is_chord:
+            ET.SubElement(note_elem, "chord")
+            
+        unpitched = ET.SubElement(note_elem, "unpitched")
+        ET.SubElement(unpitched, "display-step").text = mapping["step"]
+        ET.SubElement(unpitched, "display-octave").text = str(mapping["octave"])
+        
+        ET.SubElement(note_elem, "duration").text = str(ticks)
+        
+        if n.get("tie") == "start":
+            ET.SubElement(note_elem, "tie", type="start")
+        elif n.get("tie") == "stop":
+            ET.SubElement(note_elem, "tie", type="stop")
+        
+        if fret is not None:
+            ET.SubElement(note_elem, "instrument", id=f"P1-I{fret}")
+        
+        ET.SubElement(note_elem, "voice").text = "1"
+        
+        type_elem = ET.SubElement(note_elem, "type")
+        type_elem.text = note_type
+        if n.get("ghost"):
+            type_elem.set("size", "cue")
+            
+        for _ in range(dots):
+            ET.SubElement(note_elem, "dot")
+            
+        if tuplet_val:
+            normal_notes = 2
+            if tuplet_val in (5, 6, 7): normal_notes = 4
+            tm = ET.SubElement(note_elem, "time-modification")
+            ET.SubElement(tm, "actual-notes").text = str(tuplet_val)
+            ET.SubElement(tm, "normal-notes").text = str(normal_notes)
+        
+        if self.stem_direction == "up":
+            ET.SubElement(note_elem, "stem").text = "up"
+        elif self.stem_direction == "down":
+            ET.SubElement(note_elem, "stem").text = "down"
+        
+        if "notehead" in mapping:
+            ET.SubElement(note_elem, "notehead").text = mapping["notehead"]
+            
+        if n.get("highlight"):
+            note_elem.set("color", "#EF4444")
+            notehead_elem = note_elem.find("notehead")
+            if notehead_elem is None:
+                notehead_elem = ET.SubElement(note_elem, "notehead")
+                notehead_elem.text = "normal"
+            notehead_elem.set("color", "#EF4444")
+        elif mapping.get("is_fallback") and not self.disable_fallback_colors:
+            note_elem.set("color", "#F59E0B")
+            notehead_elem = note_elem.find("notehead")
+            if notehead_elem is None:
+                notehead_elem = ET.SubElement(note_elem, "notehead")
+                notehead_elem.text = "normal"
+            notehead_elem.set("color", "#F59E0B")
+            
+        if n.get("ghost"):
+            notehead_elem = note_elem.find("notehead")
+            if notehead_elem is None:
+                ET.SubElement(note_elem, "notehead", parentheses="yes").text = "normal"
+            else:
+                notehead_elem.set("parentheses", "yes")
+
+        return note_elem
+
+    def _process_note_notations(self, note_elem: ET.Element, n: dict, is_chord: bool, tuplet_start: bool, tuplet_stop: bool):
+        articulations = []
+        if n.get("accentuated") == 1 or n.get("accent"): articulations.append("accent")
+        if n.get("accentuated") == 2 or n.get("heavyAccent") or n.get("marcato"): articulations.append("strong-accent")
+        if n.get("staccato"): articulations.append("staccato")
+        
+        slur_start = n.get("slur") == "start" or n.get("legato") == "start"
+        slur_stop = n.get("slur") == "stop" or n.get("legato") == "stop"
+        tie_start = n.get("tieStart")
+        tie_stop = n.get("tie")
+        fermata = n.get("fermata")
+        roll = n.get("roll") or n.get("tremolo")
+
+        if articulations or slur_start or slur_stop or tie_start or tie_stop or tuplet_start or tuplet_stop or fermata or roll:
+            notations = note_elem.find("notations")
+            if notations is None:
+                notations = ET.SubElement(note_elem, "notations")
+            
+            if tie_start:
+                ET.SubElement(notations, "tied", type="start")
+            if tie_stop:
+                ET.SubElement(notations, "tied", type="stop")
+            
+            if slur_start:
+                ET.SubElement(notations, "slur", type="start", number="1")
+            if slur_stop:
+                ET.SubElement(notations, "slur", type="stop", number="1")
+                
+            if not is_chord:
+                if tuplet_start:
+                    ET.SubElement(notations, "tuplet", type="start", bracket="yes")
+                if tuplet_stop:
+                    ET.SubElement(notations, "tuplet", type="stop")
+                    
+            if fermata:
+                ET.SubElement(notations, "fermata")
+                
+            if articulations:
+                art_elem = notations.find("articulations")
+                if art_elem is None:
+                    art_elem = ET.SubElement(notations, "articulations")
+                for art in articulations:
+                    if art == "strong-accent":
+                        ET.SubElement(art_elem, "strong-accent", placement="above", type="up")
+                    elif art == "accent":
+                        ET.SubElement(art_elem, "accent", placement="above", **{"default-y": "15"})
+                    elif art == "staccato":
+                        ET.SubElement(art_elem, "staccato", placement="above")
+                    else:
+                        ET.SubElement(art_elem, art)
+                        
+            if roll:
+                orn_elem = notations.find("ornaments")
+                if orn_elem is None:
+                    orn_elem = ET.SubElement(notations, "ornaments")
+                ET.SubElement(orn_elem, "tremolo", type="single").text = "3"
+
+        # Tie handling (for playback)
+        if tie_start:
+            ET.SubElement(note_elem, "tie", type="start")
+        if tie_stop:
+            ET.SubElement(note_elem, "tie", type="stop")
 
 def generate_musicxml(track_data: dict, output_path: str, artist: str = "Unknown", title: str = "Unknown", custom_mapping: dict = None, bpm: int = None, stem_direction: str = "up") -> str:
     """Convenience function to generate MusicXML."""
