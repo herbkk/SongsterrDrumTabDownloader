@@ -333,23 +333,37 @@ class MusicXMLGenerator:
 
             swing_text = ""
             triplet_feel = measure_data.get("tripletFeel", measure_data.get("feel", measure_data.get("swing", "")))
-            if str(triplet_feel).lower() in ["eighths", "true", "16ths", "8th", "16th"]:
-                swing_text = "Swing"
-            elif str(triplet_feel).lower() in ["none", "false", "off"]:
+            feel_str = str(triplet_feel).lower()
+            if feel_str in ["eighths", "true", "8th", "eighth", "swing"]:
+                swing_text = "Swing Eighths"
+            elif feel_str in ["16ths", "16th", "sixteenth", "sixteenths"]:
+                swing_text = "Swing 16ths"
+            elif feel_str in ["none", "false", "off", "straight"]:
                 swing_text = "Straight"
 
-            if marker_text or swing_text:
+            if marker_text:
                 dir_elem = ET.SubElement(measure_elem, "direction", placement="above")
                 dir_type = ET.SubElement(dir_elem, "direction-type")
+                words = ET.SubElement(dir_type, "words", **{"font-weight": "bold", "font-size": "14"})
+                words.text = marker_text
+                
+            if swing_text:
+                dir_elem = ET.SubElement(measure_elem, "direction", placement="above")
+                dir_type = ET.SubElement(dir_elem, "direction-type")
+                words = ET.SubElement(dir_type, "words", **{"font-weight": "bold", "font-size": "14"})
+                
+                # If there's already a marker, offset the swing text so they don't overlap
                 if marker_text:
-                    words = ET.SubElement(dir_type, "words", font_weight="bold")
-                    words.text = marker_text
-                if swing_text:
-                    words = ET.SubElement(dir_type, "words", font_weight="bold")
-                    if swing_text == "Swing":
-                        words.text = "Swing (♫ = ♩ ♪³)"
-                    else:
-                        words.text = "Straight (♫ = ♫)"
+                    words.set("default-y", "35")
+                else:
+                    words.set("default-y", "15")
+                    
+                if swing_text == "Swing Eighths":
+                    words.text = "♫ = ♩ ♪³"
+                elif swing_text == "Swing 16ths":
+                    words.text = "♬ = ♪ \U0001d161³"
+                else:
+                    words.text = "♫ = ♫"
 
             if tempo_val:
                 dir_elem = ET.SubElement(measure_elem, "direction", placement="above")
@@ -394,9 +408,8 @@ class MusicXMLGenerator:
                 if times_to_play > 2:
                     dir_elem = ET.SubElement(measure_elem, "direction", placement="above")
                     dir_type = ET.SubElement(dir_elem, "direction-type")
-                    words = ET.SubElement(dir_type, "words", font_weight="bold", font_size="10")
+                    words = ET.SubElement(dir_type, "words", **{"font-weight": "bold", "font-size": "12", "default-y": "15"})
                     words.text = f"{times_to_play}x"
-                    words.set("default-y", "15")
 
             self._process_measure(measure_elem, measure_data)
 

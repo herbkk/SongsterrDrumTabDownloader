@@ -1,6 +1,6 @@
 const GM_DRUM_NOTES = {
     'Snare': 38,
-    'Snare Ghost': 38, 
+    'Snare Ghost': 38,
     'Snare Rim': 37,
     'Bass Drum': 36,
     'Hi-Hat Closed': 42,
@@ -46,19 +46,19 @@ class DrumPlaybackEngine {
         this.drumZone = null;
         this.osmd = null;
         this.bpm = 120;
-        
+
         this.isPlaying = false;
         this.playbackStartTime = 0;
         this.playbackStartWholeNotes = 0;
-        
+
         this.schedulerTimer = null;
         this.scheduleAheadTime = 0.2; // 200ms buffer for robust, jitter-free WebAudio scheduling
         this.lookahead = 25.0; // Polling interval
-        
+
         this.cursorQueue = [];
         this.visualCursorTimer = null;
         this.customCursor = null;
-        
+
         this.isReady = false;
         this.drumZones = {}; // Stores multiple zones by pitch
         this.volume = 0.8;
@@ -70,17 +70,17 @@ class DrumPlaybackEngine {
         this.playbackMap = playbackMap || [];
         this.swingMap = swingMap || {};
         this.mapIndex = 0;
-        
+
         if (!this.isReady) {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             this.audioContext = new AudioContext();
-            
+
             if (typeof WebAudioFontPlayer !== 'undefined') {
                 this.player = new WebAudioFontPlayer();
-                
+
                 // Get all unique MIDI pitches from GM_DRUM_NOTES
                 const uniquePitches = [...new Set(Object.values(GM_DRUM_NOTES))];
-                
+
                 const loadPitch = (pitch) => {
                     return new Promise((resolve) => {
                         const varName = `_drum_${pitch}_0_JCLive_sf2_file`;
@@ -98,16 +98,16 @@ class DrumPlaybackEngine {
                         document.head.appendChild(script);
                     });
                 };
-                
+
                 const results = await Promise.all(uniquePitches.map(p => loadPitch(p)));
-                
+
                 for (let res of results) {
                     if (res.varName && window[res.varName]) {
                         this.drumZones[res.pitch] = window[res.varName];
                         this.player.loader.decodeAfterLoading(this.audioContext, res.varName);
                     }
                 }
-                
+
                 // Wait for all audio decoding to finish
                 await new Promise(resolve => {
                     this.player.loader.waitLoad(() => {
@@ -115,7 +115,7 @@ class DrumPlaybackEngine {
                         resolve();
                     });
                 });
-                
+
             } else {
                 console.error("WebAudioFontPlayer not found.");
             }
@@ -141,46 +141,46 @@ class DrumPlaybackEngine {
 
     getDrumKey(note) {
         if (!note || note.halfTone === undefined) return null;
-        
+
         // OSMD applies a -1 octave transposition to the entire score, including percussion clefs.
         // We add 12 to reverse this transposition and retrieve the true visual MIDI pitch.
         const adjustedHalfTone = note.halfTone + 12;
-        
+
         const octave = Math.floor(adjustedHalfTone / 12) - 1;
         const pitchClass = adjustedHalfTone % 12;
-        
+
         // Map pitchClass back to visual step (0=C, 2=D, 4=E, 5=F, 7=G, 9=A, 11=B)
         const stepMap = {
             0: 'C', 2: 'D', 4: 'E', 5: 'F', 7: 'G', 9: 'A', 11: 'B'
         };
-        
+
         if (stepMap[pitchClass] !== undefined) {
             return `${stepMap[pitchClass]}-${octave}`;
         }
-        
+
         return null;
     }
 
     play() {
         if (!this.isReady || !this.osmd) return;
-        
+
         if (this.audioContext.state === 'suspended') {
             this.audioContext.resume();
         }
-        
+
         if (this.isPlaying) return;
         this.isPlaying = true;
-        
+
         if (!this.osmd.cursor.iterator || this.osmd.cursor.iterator.EndReached) {
             this.osmd.cursor.reset();
             this.mapIndex = 0;
         }
-        
+
         // --- Pre-calculate Linear Measure Start Times ---
         if (!this.linearStartTimes && this.playbackMap && this.osmd.sheet.SourceMeasures) {
             this.measureStartTimes = []; // Native start times
             this.measureDurations = []; // Native durations
-            
+
             // Scan OSMD for exact native measure start times
             let savedIterator = this.osmd.cursor.iterator.clone();
             this.osmd.cursor.reset();
@@ -195,15 +195,15 @@ class DrumPlaybackEngine {
                 }
                 this.osmd.cursor.next();
             }
-            
+
             for (let i = 0; i < this.measureStartTimes.length; i++) {
                 if (i < this.measureStartTimes.length - 1) {
-                    this.measureDurations[i] = this.measureStartTimes[i+1] - this.measureStartTimes[i];
+                    this.measureDurations[i] = this.measureStartTimes[i + 1] - this.measureStartTimes[i];
                 } else {
                     this.measureDurations[i] = 1.0; // Fallback for last measure
                 }
             }
-            
+
             this.linearStartTimes = [];
             let currentLinearTime = 0;
             for (let i = 0; i < this.playbackMap.length; i++) {
@@ -211,18 +211,18 @@ class DrumPlaybackEngine {
                 let mIndex = this.playbackMap[i];
                 currentLinearTime += (this.measureDurations[mIndex] || 1.0);
             }
-            
+
             // Restore iterator
             this.osmd.cursor.iterator = savedIterator;
         }
-        
+
         this.osmd.cursor.show();
-        
+
         // Setup Decoupled Visual Cursor
         if (this.customCursor && this.customCursor.parentElement) {
             this.customCursor.parentElement.removeChild(this.customCursor);
         }
-        
+
         this.customCursor = document.createElement('div');
         this.customCursor.style.position = 'absolute';
         this.customCursor.style.zIndex = '999';
@@ -231,28 +231,28 @@ class DrumPlaybackEngine {
         this.customCursor.style.borderRadius = "6px";
         this.customCursor.style.pointerEvents = "none";
         this.customCursor.style.display = "none";
-        
+
         if (this.osmd.cursor.cursorElement && this.osmd.cursor.cursorElement.parentElement) {
             this.osmd.cursor.cursorElement.parentElement.appendChild(this.customCursor);
         }
-        
+
         // Hide the native OSMD cursor so it doesn't jump ahead visually
         if (this.osmd.cursor.cursorElement) {
             this.osmd.cursor.cursorElement.style.opacity = "0";
             // Ensure native cursor matches dimensions roughly to calculate correct boundaries if OSMD needs it
-            this.osmd.cursor.cursorElement.style.width = "28px"; 
+            this.osmd.cursor.cursorElement.style.width = "28px";
             this.osmd.cursor.cursorElement.style.transform = "translateX(0px)";
         }
-        
+
         this.cursorQueue = [];
-        
+
         let startLinearWholeNotes = this.osmd.cursor.iterator.currentTimeStamp.RealValue;
         if (this.linearStartTimes && this.measureStartTimes && this.mapIndex < this.linearStartTimes.length) {
             const currentMeasureIndex = this.osmd.cursor.iterator.CurrentMeasureIndex;
             const noteLocalTime = this.osmd.cursor.iterator.currentTimeStamp.RealValue - this.measureStartTimes[currentMeasureIndex];
             startLinearWholeNotes = this.linearStartTimes[this.mapIndex] + noteLocalTime;
         }
-        
+
         this.playbackStartWholeNotes = startLinearWholeNotes;
         this.playbackStartTime = this.audioContext.currentTime + 0.05;
         this.scheduler();
@@ -264,7 +264,7 @@ class DrumPlaybackEngine {
     pause() {
         if (!this.isPlaying) return;
         this.isPlaying = false;
-        
+
         if (this.schedulerTimer) {
             clearTimeout(this.schedulerTimer);
             this.schedulerTimer = null;
@@ -301,7 +301,7 @@ class DrumPlaybackEngine {
             // Wait to check EndReached until AFTER jump logic
 
             const currentMeasureIndex = this.osmd.cursor.iterator.CurrentMeasureIndex;
-            
+
             let linearWholeNotes = 0;
             let noteLocalTime = 0;
             if (this.linearStartTimes && this.measureStartTimes && this.mapIndex < this.linearStartTimes.length) {
@@ -321,7 +321,7 @@ class DrumPlaybackEngine {
 
             if (swingType && swingType !== "None" && swingType !== "Straight") {
                 const swingStr = String(swingType).toLowerCase();
-                
+
                 if (swingStr.includes("16") || swingStr.includes("sixteenth")) {
                     // 16th note swing
                     const sixteenths = noteLocalTime * 16;
@@ -351,7 +351,7 @@ class DrumPlaybackEngine {
             }
 
             const notes = this.osmd.cursor.NotesUnderCursor();
-            
+
             // Queue visual cursor update before next() moves the native element
             if (this.osmd.cursor.cursorElement) {
                 this.cursorQueue.push({
@@ -366,26 +366,26 @@ class DrumPlaybackEngine {
 
             if (notes && notes.length > 0) {
                 const mapping = window.activeCustomMapping || window.globalDrumMapping || {};
-                
+
                 for (let note of notes) {
                     if (note.isRest()) continue;
 
                     let midiPitch = 38; // Default Snare
                     let noteVol = this.volume;
-                    
+
                     const key = this.getDrumKey(note);
                     let drumType = null;
                     if (key) {
                         // Priority 1: User's custom mapping
                         if (mapping && mapping[key]) {
                             drumType = mapping[key];
-                        } 
+                        }
                         // Priority 2: VISUAL_DRUM_MAP fallback
                         else if (VISUAL_DRUM_MAP[key]) {
                             drumType = VISUAL_DRUM_MAP[key];
                         }
                     }
-                    
+
                     if (drumType) {
                         // Handle Ghost Notes, Rimshots & Cymbals
                         if (note.notehead) {
@@ -401,16 +401,16 @@ class DrumPlaybackEngine {
                                 drumType = 'Cowbell';
                             }
                         }
-                        
+
                         let isGhost = false;
+                        if (note.isCueNote) isGhost = true;
                         if (note.ParentVoiceItem && note.ParentVoiceItem.isCue) isGhost = true;
                         if (note.Length && note.Length.RealValue < 0) isGhost = true;
-                        
+
                         if (isGhost) {
-                            noteVol = this.volume * 0.4;
-                            if (drumType === 'Snare') drumType = 'Snare Ghost';
+                            noteVol = this.volume * 0.3;
                         }
-                        
+
                         if (GM_DRUM_NOTES[drumType]) {
                             midiPitch = GM_DRUM_NOTES[drumType];
                         }
@@ -425,7 +425,7 @@ class DrumPlaybackEngine {
                         // we fallback to Bass Drum (36) and WebAudioFont will pitch it up/down to the midiPitch.
                         targetZone = this.drumZones[36] || Object.values(this.drumZones)[0];
                     }
-                    
+
                     if (targetZone && noteVol > 0) {
                         this.player.queueWaveTable(this.audioContext, this.audioContext.destination, targetZone, absoluteEventTime, midiPitch, 0.5, noteVol);
                     }
@@ -433,20 +433,20 @@ class DrumPlaybackEngine {
             }
 
             this.osmd.cursor.next();
-            
+
             // Custom Jump Sequencer Logic
             if (this.playbackMap && this.playbackMap.length > 0) {
                 const newMeasureIndex = this.osmd.cursor.iterator.EndReached ? -1 : this.osmd.cursor.iterator.CurrentMeasureIndex;
-                
+
                 // Have we moved to a new measure natively?
                 if (newMeasureIndex !== currentMeasureIndex || this.osmd.cursor.iterator.EndReached) {
                     this.mapIndex++;
-                    
+
                     if (this.mapIndex >= this.playbackMap.length) {
                         this.stop();
                         break;
                     }
-                    
+
                     const targetMeasure = this.playbackMap[this.mapIndex];
                     // We must enforce the jump to targetMeasure!
                     // OSMD native repeats might have failed, or jumped natively.
@@ -458,7 +458,7 @@ class DrumPlaybackEngine {
                         while (!this.osmd.cursor.iterator.EndReached && this.osmd.cursor.iterator.CurrentMeasureIndex !== targetMeasure) {
                             this.osmd.cursor.next();
                             safety++;
-                            if(safety > 10000) break; // prevent infinite loops if measure doesn't exist
+                            if (safety > 10000) break; // prevent infinite loops if measure doesn't exist
                         }
                     }
                 }
@@ -467,17 +467,17 @@ class DrumPlaybackEngine {
                 break;
             }
         }
-        
+
         if (this.isPlaying) {
             this.schedulerTimer = setTimeout(() => this.scheduler(), this.lookahead);
         }
     }
-    
+
     visualLoop() {
         if (!this.isPlaying) return;
-        
+
         const currentTime = this.audioContext.currentTime;
-        
+
         // Find all visual events that have passed and apply the most recent one
         let updated = false;
         while (this.cursorQueue.length > 0 && this.cursorQueue[0].time <= currentTime) {
@@ -493,11 +493,11 @@ class DrumPlaybackEngine {
                 updated = true;
             }
         }
-        
+
         if (updated && this.customCursor) {
             this.customCursor.style.display = "block";
         }
-        
+
         this.visualCursorTimer = requestAnimationFrame(() => this.visualLoop());
     }
 }

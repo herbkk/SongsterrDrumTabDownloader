@@ -442,6 +442,10 @@ function processNextBatchItem() {
 }
 
 async function startDownload(payload, isBatchContinuation = false) {
+    if (window.playbackEngine && window.playbackEngine.isPlaying) {
+        stopPlayback();
+    }
+
     payload.format = currentFormat;
     payload.global_mapping = globalDrumMapping;
     payload.stem_direction = document.getElementById('style-stem-direction')?.value || 'up';
@@ -467,10 +471,12 @@ async function startDownload(payload, isBatchContinuation = false) {
         Object.assign(payload.global_mapping, existingItem.customMapping);
     }
 
-    // Hide inputs, show progress
+    // Hide inputs and old results, show progress
     panels.search.classList.add('hidden');
     panels.url.classList.add('hidden');
     tabs.search.parentElement.classList.add('hidden'); // Hide tabs wrapper
+    panels.result.classList.add('hidden');
+    panels.result.classList.remove('flex');
 
     panels.progress.classList.remove('hidden');
     panels.progress.classList.add('flex');
