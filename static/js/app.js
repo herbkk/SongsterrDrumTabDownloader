@@ -23,25 +23,8 @@ window.osmdDarkBg = "#1c1d1f";
 window.osmdDarkStaff = "#6d6d6d";
 window.osmdDarkNote = "#cacaca";
 
-// Theme Configuration
-const BASE_THEMES = [
-    { id: 'classic-dark', name: 'Classic Dark', primary: '#0f172a', secondary: '#1e293b' },
-    { id: 'clean-light', name: 'Clean Light', primary: '#f8fafc', secondary: '#ffffff' },
-    { id: 'nord', name: 'Nord', primary: '#2e3440', secondary: '#3b4252' },
-    { id: 'dracula', name: 'Dracula', primary: '#282a36', secondary: '#44475a' }
-];
-
-const THEMES = [
-    { id: 'turquoise-glow', name: 'Turquoise Glow', primary: '#06b6d4', secondary: '#8b5cf6' },
-    { id: 'amber-flame', name: 'Amber Flame', primary: '#f59e0b', secondary: '#ef4444' },
-    { id: 'ocean-blue', name: 'Ocean Blue', primary: '#3b82f6', secondary: '#06b6d4' },
-    { id: 'electric-purple', name: 'Electric Purple', primary: '#a855f7', secondary: '#ec4899' },
-    { id: 'emerald-night', name: 'Emerald Night', primary: '#10b981', secondary: '#14b8a6' },
-    { id: 'sunset-rose', name: 'Sunset Rose', primary: '#f43f5e', secondary: '#f97316' }
-];
-
-let currentBaseTheme = localStorage.getItem('songsterr_base_theme') || 'clean-light';
-let currentTheme = localStorage.getItem('songsterr_theme') || 'turquoise-glow';
+import { initTheme, renderThemePicker, renderBaseThemePicker, setBaseTheme, setTheme } from './themeManager.js';
+import { saveToLibrary, getLibrary, renderLibrary, librarySortMode } from './storageManager.js';
 
 // Search Elements
 const searchInput = document.getElementById('search-input');
@@ -66,6 +49,7 @@ let currentTaskId = null;
 let searchTimeout = null;
 let currentFormat = 'musicxml';
 let activeTab = 'search';
+window.activeTab = activeTab;
 
 // Batch Processing State
 let batchQueue = [];
@@ -174,6 +158,7 @@ function updateBatchHelperText() {
 
 function switchTab(tabName) {
     activeTab = tabName;
+    window.activeTab = tabName;
     // Update tab styling
     Object.keys(tabs).forEach(key => {
         if (key === tabName) {
@@ -1338,10 +1323,7 @@ window.postProcessOSMDRender = function () {
         window.osmdDarkModeGlobal = storedDark === 'true';
 
         // Apply Theme
-        setBaseTheme(currentBaseTheme);
-        setTheme(currentTheme);
-        renderBaseThemePicker();
-        renderThemePicker();
+        initTheme();
 
         // Sync icon state immediately
         updateDarkModeIcon();
@@ -1465,299 +1447,7 @@ async function ensureAlbumCover(url, artist, title) {
     }
 }
 
-// --- Library / History Management ---
-
-let librarySortMode = localStorage.getItem('songsterr_library_sort') || 'recent';
-let libraryFilterQuery = '';
-
-function getLibrary() {
-    try {
-        const data = localStorage.getItem('songsterr_library');
-        return data ? JSON.parse(data) : [];
-    } catch (e) {
-        return [];
-    }
-}
-
-function saveToLibrary(artist, title, url, customMapping = null) {
-    let lib = getLibrary();
-    let existingItem = lib.find(item => item.url === url);
-    let mappingToSave = customMapping;
-
-    if (!mappingToSave && existingItem && existingItem.customMapping) {
-        mappingToSave = existingItem.customMapping;
-    }
-
-    // Remove if exists to prepend it at the top
-    lib = lib.filter(item => item.url !== url);
-
-    let newItem = {
-        artist: artist || 'Unknown Artist',
-        title: title || 'Unknown Title',
-        url: url,
-        date: new Date().toISOString()
-    };
-
-    if (mappingToSave && Object.keys(mappingToSave).length > 0) {
-        newItem.customMapping = mappingToSave;
-    }
-
-    lib.unshift(newItem);
-
-    // Keep max 50 items
-    if (lib.length > 50) lib.pop();
-
-    localStorage.setItem('songsterr_library', JSON.stringify(lib));
-    if (activeTab === 'library') renderLibrary();
-}
-
-function removeFromLibrary(url) {
-    let lib = getLibrary();
-    lib = lib.filter(item => item.url !== url);
-    localStorage.setItem('songsterr_library', JSON.stringify(lib));
-    renderLibrary();
-}
-
-function clearLibrary() {
-    if (confirm("Are you sure you want to clear your download history?")) {
-        localStorage.removeItem('songsterr_library');
-        renderLibrary();
-    }
-}
-
-function setLibrarySort(mode) {
-    librarySortMode = mode;
-    localStorage.setItem('songsterr_library_sort', mode);
-
-    // Update pill active states
-    document.querySelectorAll('.library-sort-pill').forEach(pill => {
-        if (pill.dataset.sort === mode) {
-            pill.classList.add('active');
-        } else {
-            pill.classList.remove('active');
-        }
-    });
-
-    renderLibrary();
-}
-
-function onLibraryFilterInput() {
-    const input = document.getElementById('library-filter-input');
-    const clearBtn = document.getElementById('library-filter-clear');
-    libraryFilterQuery = input.value.trim().toLowerCase();
-
-    if (libraryFilterQuery.length > 0) {
-        clearBtn.classList.remove('hidden');
-    } else {
-        clearBtn.classList.add('hidden');
-    }
-
-    renderLibrary();
-}
-
-function clearLibraryFilter() {
-    const input = document.getElementById('library-filter-input');
-    const clearBtn = document.getElementById('library-filter-clear');
-    input.value = '';
-    libraryFilterQuery = '';
-    clearBtn.classList.add('hidden');
-    renderLibrary();
-}
-
-function renderLibraryItem(item) {
-    if (!item.coverUrl && !item.coverFetchAttempted) {
-        item.coverFetchAttempted = true; // temporary session flag
-        ensureAlbumCover(item.url, item.artist, item.title);
-    }
-
-    const d = new Date(item.date);
-    const dateStr = `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`;
-    let badgeHtml = '';
-    if (item.customMapping) {
-        const count = Object.keys(item.customMapping).length;
-        if (count > 0) {
-            badgeHtml = `<span class="ml-2 p-1 rounded bg-accent-glow text-accent border border-accent-subtle flex items-center shrink-0 cursor-help" data-tooltip="${count} Custom Drum Mapping${count !== 1 ? 's' : ''} Saved"><i data-feather="map" class="w-3.5 h-3.5"></i></span>`;
-        }
-    }
-
-    const coverHtml = item.coverUrl
-        ? `<img src="${item.coverUrl}" alt="Cover" class="w-16 h-16 rounded-md object-cover mr-4 border border-base shadow-lg shrink-0">`
-        : `<div class="w-16 h-16 rounded-md bg-surface border border-base mr-4 flex items-center justify-center shrink-0 shadow-inner"><i data-feather="music" class="w-6 h-6 text-muted"></i></div>`;
-
-    return `
-        <div class="flex items-center justify-between p-4 bg-input border border-subtle rounded-xl hover:bg-surface transition-colors group">
-            ${coverHtml}
-            <div class="flex-1 min-w-0 mr-4">
-                <h3 class="text-primary font-medium truncate">${item.title}</h3>
-                <p class="text-secondary text-sm truncate">${item.artist}</p>
-                <div class="flex items-center mt-1">
-                    <p class="text-muted text-xs">Downloaded: ${dateStr}</p>
-                    ${badgeHtml}
-                </div>
-            </div>
-            <div class="flex items-center space-x-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                <button onclick="startDownload({url: '${item.url}'})" class="p-2 text-accent hover:text-primary hover:bg-white/5 rounded-lg transition-colors" data-tooltip="Re-open">
-                    <i data-feather="external-link" class="w-4 h-4"></i>
-                </button>
-                <button onclick="removeFromLibrary('${item.url}')" class="p-2 text-red-400 hover:text-red-300 hover:bg-white/5 rounded-lg transition-colors" data-tooltip="Delete">
-                    <i data-feather="trash-2" class="w-4 h-4"></i>
-                </button>
-            </div>
-        </div>
-    `;
-}
-
-function renderLibrary() {
-    let lib = getLibrary();
-    const container = document.getElementById('library-list');
-    const controls = document.getElementById('library-controls');
-
-    // Show/hide controls based on whether the library has items
-    if (controls) {
-        controls.style.display = lib.length === 0 ? 'none' : '';
-    }
-
-    if (lib.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-state-icon flex items-center justify-center">
-                    <i data-feather="music" class="w-5 h-5"></i>
-                </div>
-                <p class="empty-state-text">No songs in your library yet.<br>Download a tab to save it here!</p>
-            </div>
-        `;
-        feather.replace();
-        return;
-    }
-
-    // Apply filter
-    if (libraryFilterQuery) {
-        lib = lib.filter(item =>
-            item.artist.toLowerCase().includes(libraryFilterQuery) ||
-            item.title.toLowerCase().includes(libraryFilterQuery)
-        );
-    }
-
-    if (lib.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-state-icon flex items-center justify-center">
-                    <i data-feather="search" class="w-5 h-5"></i>
-                </div>
-                <p class="empty-state-text">No matches found.</p>
-            </div>
-        `;
-        feather.replace();
-        return;
-    }
-
-    // Apply sort
-    if (librarySortMode === 'artist') {
-        lib.sort((a, b) => a.artist.localeCompare(b.artist, undefined, { sensitivity: 'base' }));
-    } else if (librarySortMode === 'title') {
-        lib.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
-    }
-    // 'recent' uses the natural order (already sorted by date desc from saveToLibrary)
-
-    // Render: grouped or flat
-    if (librarySortMode === 'artist') {
-        // Group by artist
-        const groups = {};
-        lib.forEach(item => {
-            const key = item.artist || 'Unknown Artist';
-            if (!groups[key]) groups[key] = [];
-            groups[key].push(item);
-        });
-
-        let html = '';
-        Object.keys(groups).forEach(artistName => {
-            const items = groups[artistName];
-            html += `
-                <div class="library-group-header">
-                    <span class="library-group-header-name">${artistName}</span>
-                    <span class="library-group-header-count">${items.length} ${items.length === 1 ? 'song' : 'songs'}</span>
-                </div>
-            `;
-            items.forEach(item => {
-                html += renderLibraryItem(item);
-            });
-        });
-        container.innerHTML = html;
-    } else {
-        // Flat list
-        container.innerHTML = lib.map(item => renderLibraryItem(item)).join('');
-    }
-
-    feather.replace();
-}
-
-// --- Theme Management ---
-
-function setTheme(themeId) {
-    const theme = THEMES.find(t => t.id === themeId);
-    if (!theme) return;
-
-    currentTheme = themeId;
-    document.documentElement.setAttribute('data-theme', themeId);
-    localStorage.setItem('songsterr_theme', themeId);
-
-    // Update the picker UI
-    document.querySelectorAll('.theme-card').forEach(card => {
-        if (card.dataset.themeId === themeId) {
-            card.classList.add('active');
-        } else {
-            card.classList.remove('active');
-        }
-    });
-}
-
-function renderThemePicker() {
-    const grid = document.getElementById('theme-grid');
-    if (!grid) return;
-
-    grid.innerHTML = THEMES.map(t => {
-        const isActive = t.id === currentTheme;
-        return `
-            <div class="theme-card ${isActive ? 'active' : ''}" data-theme-id="${t.id}" onclick="setTheme('${t.id}')">
-                <div class="theme-swatch" style="background: linear-gradient(135deg, ${t.primary}, ${t.secondary})"></div>
-                <div class="theme-card-name">${t.name}</div>
-            </div>
-        `;
-    }).join('');
-}
-
-function setBaseTheme(themeId) {
-    const theme = BASE_THEMES.find(t => t.id === themeId);
-    if (!theme) return;
-
-    currentBaseTheme = themeId;
-    document.documentElement.setAttribute('data-base-theme', themeId);
-    localStorage.setItem('songsterr_base_theme', themeId);
-
-    // Update the picker UI
-    document.querySelectorAll('#base-theme-grid .theme-card').forEach(card => {
-        if (card.dataset.themeId === themeId) {
-            card.classList.add('active');
-        } else {
-            card.classList.remove('active');
-        }
-    });
-}
-
-function renderBaseThemePicker() {
-    const grid = document.getElementById('base-theme-grid');
-    if (!grid) return;
-
-    grid.innerHTML = BASE_THEMES.map(t => {
-        const isActive = t.id === currentBaseTheme;
-        return `
-            <div class="theme-card ${isActive ? 'active' : ''}" data-theme-id="${t.id}" onclick="setBaseTheme('${t.id}')">
-                <div class="theme-swatch" style="background: linear-gradient(135deg, ${t.primary}, ${t.secondary})"></div>
-                <div class="theme-card-name">${t.name}</div>
-            </div>
-        `;
-    }).join('');
-}
+// (Library & Theme logic extracted to ES6 modules)
 
 // --- Tooltip Manager ---
 
@@ -1955,3 +1645,23 @@ document.addEventListener('DOMContentLoaded', () => {
     loadOSMDLayoutSettings();
     initVolumeControl();
 });
+
+// Expose functions to window for inline HTML handlers
+window.switchTab = switchTab;
+window.toggleBatchMode = toggleBatchMode;
+window.updateFormatSelection = updateFormatSelection;
+window.startDownloadFromUrl = startDownloadFromUrl;
+window.resetGlobalMapping = resetGlobalMapping;
+window.setGlobalVolume = setGlobalVolume;
+window.hideToast = hideToast;
+window.exportOSMDPDF = exportOSMDPDF;
+window.toggleStemDirection = toggleStemDirection;
+window.toggleOSMDDarkMode = toggleOSMDDarkMode;
+window.togglePlayback = togglePlayback;
+window.stopPlayback = stopPlayback;
+window.startDownload = startDownload;
+window.startDownloadFromSearch = startDownloadFromSearch;
+window.resetUI = resetUI;
+window.submitMapping = submitMapping;
+window.ensureAlbumCover = ensureAlbumCover;
+window.saveOSMDLayoutSettings = saveOSMDLayoutSettings;
