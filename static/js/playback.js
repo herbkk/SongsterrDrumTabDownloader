@@ -162,6 +162,59 @@ export class DrumPlaybackEngine extends EventTarget {
         return null;
     }
 
+    resolveMidiPitch(note, mapping, defaultVolume) {
+        let midiPitch = 38; // Default Snare
+        let noteVol = defaultVolume;
+
+        const key = this.getDrumKey(note);
+        let drumType = null;
+        if (key) {
+            // Priority 1: User's custom mapping
+            if (mapping && mapping[key]) {
+                drumType = mapping[key];
+            }
+            // Priority 2: VISUAL_DRUM_MAP fallback
+            else if (VISUAL_DRUM_MAP[key]) {
+                drumType = VISUAL_DRUM_MAP[key];
+            }
+        }
+
+        if (drumType) {
+            // Handle Ghost Notes, Rimshots & Cymbals
+            if (note.notehead) {
+                if (note.notehead.shape === 3) { // Cross
+                    if (drumType === 'Snare') drumType = 'Snare Rim';
+                    else if (drumType === 'Hi-Hat Closed') drumType = 'Hi-Hat Closed'; // default
+                } else if (note.notehead.shape === 1) { // Diamond
+                    if (drumType === 'Ride') drumType = 'Ride Bell';
+                    else if (drumType === 'Crash 2') drumType = 'Tambourine'; // mapped to B-5 diamond
+                } else if (note.notehead.shape === 5) { // Circle-X
+                    if (drumType === 'Hi-Hat Closed') drumType = 'Hi-Hat Open';
+                } else if (note.notehead.shape === 2) { // Triangle
+                    drumType = 'Cowbell';
+                }
+            }
+
+            let isGhost = false;
+            if (note.isCueNote) isGhost = true;
+            if (note.ParentVoiceItem && note.ParentVoiceItem.isCue) isGhost = true;
+            if (note.Length && note.Length.RealValue < 0) isGhost = true;
+
+            if (isGhost) {
+                noteVol = defaultVolume * 0.3;
+            }
+
+            if (GM_DRUM_NOTES[drumType]) {
+                midiPitch = GM_DRUM_NOTES[drumType];
+            }
+        } else if (note.halfTone) {
+            // Fallback
+            midiPitch = note.halfTone;
+        }
+
+        return { midiPitch, volume: noteVol };
+    }
+
     play() {
         if (!this.isReady || !this.osmd) return;
 
@@ -353,54 +406,7 @@ export class DrumPlaybackEngine extends EventTarget {
                 for (let note of notes) {
                     if (note.isRest()) continue;
 
-                    let midiPitch = 38; // Default Snare
-                    let noteVol = this.volume;
-
-                    const key = this.getDrumKey(note);
-                    let drumType = null;
-                    if (key) {
-                        // Priority 1: User's custom mapping
-                        if (mapping && mapping[key]) {
-                            drumType = mapping[key];
-                        }
-                        // Priority 2: VISUAL_DRUM_MAP fallback
-                        else if (VISUAL_DRUM_MAP[key]) {
-                            drumType = VISUAL_DRUM_MAP[key];
-                        }
-                    }
-
-                    if (drumType) {
-                        // Handle Ghost Notes, Rimshots & Cymbals
-                        if (note.notehead) {
-                            if (note.notehead.shape === 3) { // Cross
-                                if (drumType === 'Snare') drumType = 'Snare Rim';
-                                else if (drumType === 'Hi-Hat Closed') drumType = 'Hi-Hat Closed'; // default
-                            } else if (note.notehead.shape === 1) { // Diamond
-                                if (drumType === 'Ride') drumType = 'Ride Bell';
-                                else if (drumType === 'Crash 2') drumType = 'Tambourine'; // mapped to B-5 diamond
-                            } else if (note.notehead.shape === 5) { // Circle-X
-                                if (drumType === 'Hi-Hat Closed') drumType = 'Hi-Hat Open';
-                            } else if (note.notehead.shape === 2) { // Triangle
-                                drumType = 'Cowbell';
-                            }
-                        }
-
-                        let isGhost = false;
-                        if (note.isCueNote) isGhost = true;
-                        if (note.ParentVoiceItem && note.ParentVoiceItem.isCue) isGhost = true;
-                        if (note.Length && note.Length.RealValue < 0) isGhost = true;
-
-                        if (isGhost) {
-                            noteVol = this.volume * 0.3;
-                        }
-
-                        if (GM_DRUM_NOTES[drumType]) {
-                            midiPitch = GM_DRUM_NOTES[drumType];
-                        }
-                    } else if (note.halfTone) {
-                        // Fallback
-                        midiPitch = note.halfTone;
-                    }
+                    const { midiPitch, volume: noteVol } = this.resolveMidiPitch(note, mapping, this.volume);
 
                     let targetZone = this.drumZones[midiPitch];
                     if (!targetZone) {
