@@ -451,14 +451,8 @@ body { background-color: var(--bg-body); color: var(--text-primary); }
 
 .theme-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 0.75rem;
-}
-
-@media (min-width: 640px) {
-  .theme-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
 }
 
 .theme-card {

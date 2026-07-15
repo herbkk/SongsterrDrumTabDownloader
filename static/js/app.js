@@ -498,8 +498,8 @@ function submitTrackSelection(partId) {
 }
 
 async function submitMapping() {
-    if (!currentInterceptMapper) return;
-    const customMapping = currentInterceptMapper.getMapping();
+    if (!window.currentInterceptMapper) return;
+    const customMapping = window.currentInterceptMapper.getMapping();
     window.lastSubmittedCustomMapping = customMapping;
     downloadManager.submitMapping(customMapping, getDownloadConfig());
 }
@@ -764,7 +764,7 @@ async function exportOSMDPDF() {
 
     const btn = document.getElementById('btn-save-pdf');
     const originalText = btn.innerHTML;
-    btn.innerHTML = `<span><i data-feather="loader" class="w-4 h-4 mr-2 animate-spin"></i> Generating...</span>`;
+    btn.innerHTML = `<i data-feather="loader" class="w-5 h-5 mr-2 animate-spin"></i><span class="whitespace-nowrap">Generating...</span>`;
     btn.disabled = true;
     feather.replace();
 
@@ -925,8 +925,8 @@ function updateDarkThemeColors() {
             osmdInstance.render();
             postProcessOSMDRender();
         }
-        if (currentInterceptMapper && !panels.mapping.classList.contains('hidden')) {
-            currentInterceptMapper.updateDarkMode(true);
+        if (window.currentInterceptMapper && !panels.mapping.classList.contains('hidden')) {
+            window.currentInterceptMapper.updateDarkMode(true);
         }
     }
 }
@@ -968,8 +968,8 @@ function toggleOSMDDarkMode() {
             postProcessOSMDRender();
         }
 
-        if (currentInterceptMapper && !panels.mapping.classList.contains('hidden')) {
-            currentInterceptMapper.updateDarkMode(window.osmdDarkModeGlobal);
+        if (window.currentInterceptMapper && !panels.mapping.classList.contains('hidden')) {
+            window.currentInterceptMapper.updateDarkMode(window.osmdDarkModeGlobal);
         }
     }, () => {
         updateDarkModeIcon();
@@ -1408,13 +1408,14 @@ function setGlobalVolume(val) {
     const sliderVal = document.getElementById('setting-volume-val');
     if (sliderVal) sliderVal.innerText = Math.round(globalVolume * 100) + '%';
 
-    // Update Button Fill
+    // Update Button Fills
     const fill = document.getElementById('volume-fill');
     if (fill) fill.style.height = (globalVolume * 100) + '%';
 
     // Update Icon opacity based on volume
     const iconVol = document.getElementById('icon-volume');
     const iconMuted = document.getElementById('icon-volume-muted');
+    
     if (iconVol && iconMuted) {
         if (globalVolume === 0) {
             iconVol.classList.add('hidden');
