@@ -596,7 +596,10 @@ function createConfiguredOSMD(containerElement, isGhost = false) {
         drawComposer: drawTitle,
         pageFormat: pageFormat,
         pageBackgroundColor: window.osmdDarkModeGlobal ? window.osmdDarkBg : "#FFFFFF",
-        darkMode: window.osmdDarkModeGlobal
+        darkMode: window.osmdDarkModeGlobal,
+        engravingRules: {
+            percussionUseXMLDisplayStep: true
+        }
     });
 
     osmd.EngravingRules.FlatBeams = true; // Hardcoded best for drums
@@ -616,6 +619,8 @@ function createConfiguredOSMD(containerElement, isGhost = false) {
     if (window.osmdDarkModeGlobal) {
         window.applyDarkThemeEngravingRules(osmd);
     }
+
+    osmd.setOptions({ percussionUseXMLDisplayStep: true });
 
     return osmd;
 }

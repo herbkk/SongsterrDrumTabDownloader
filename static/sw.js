@@ -1,4 +1,4 @@
-const CACHE_NAME = 'drumtabs-v2';
+const CACHE_NAME = 'drumtabs-v3';
 const SHELL_ASSETS = [
   '/',
   '/static/css/custom.css',

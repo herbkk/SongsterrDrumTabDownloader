@@ -164,7 +164,10 @@ class VisualMapper {
                         drawMeasureNumbers: false,
                         autoResize: true,
                         darkMode: window.osmdDarkModeGlobal || false,
-                        pageBackgroundColor: window.osmdDarkModeGlobal ? window.osmdDarkBg : "#FFFFFF"
+                        pageBackgroundColor: window.osmdDarkModeGlobal ? window.osmdDarkBg : "#FFFFFF",
+                        engravingRules: {
+                            percussionUseXMLDisplayStep: true
+                        }
                     });
                     osmd.EngravingRules.RenderMeasureNumbers = false;
                     osmd.EngravingRules.PageTopMargin = 2.0;
@@ -172,6 +175,7 @@ class VisualMapper {
                     osmd.EngravingRules.PageLeftMargin = 0.0;
                     osmd.EngravingRules.PageRightMargin = 0.0;
                     osmd.EngravingRules.PercussionOneLineCutoff = 0;
+                    osmd.setOptions({ percussionUseXMLDisplayStep: true });
 
                     if (window.osmdDarkModeGlobal && window.applyDarkThemeEngravingRules) {
                         window.applyDarkThemeEngravingRules(osmd);

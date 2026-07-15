@@ -22,8 +22,8 @@ DIVISIONS = 480
 
 DRUM_MAPPING = {
     # Bass Drum (Bottom space - F4)
-    36: {"step": "F", "octave": 4, "name": "Bass Drum 1"},
-    35: {"step": "F", "octave": 4, "name": "Acoustic Bass Drum"},
+    36: {"step": "F", "octave": 4, "name": "Kick 1", "midi_pitch": 36},
+    35: {"step": "F", "octave": 4, "name": "Acoustic Kick", "midi_pitch": 35},
     
     # Snare (Third space - C5)
     38: {"step": "C", "octave": 5, "name": "Acoustic Snare"},
@@ -32,13 +32,13 @@ DRUM_MAPPING = {
     40: {"step": "C", "octave": 5, "notehead": "x", "name": "Electric Snare / Rimshot"},
     37: {"step": "C", "octave": 5, "notehead": "x", "name": "Side Stick"},
     
-    # Toms
-    48: {"step": "E", "octave": 5, "name": "High Tom"}, # High Tom (Top space)
-    50: {"step": "E", "octave": 5, "name": "High Tom"}, # High Tom alt
-    47: {"step": "D", "octave": 5, "name": "Mid Tom"}, # Mid Tom (4th line)
-    45: {"step": "D", "octave": 5, "name": "Low Tom"}, # Low Tom alt
-    43: {"step": "A", "octave": 4, "name": "High Floor Tom"}, # Floor Tom (2nd space)
-    41: {"step": "G", "octave": 4, "name": "Low Floor Tom"}, # Low Floor Tom (2nd line)
+    # Toms (Aligned exactly with Songsterr's visual height legend)
+    50: {"step": "E", "octave": 5, "name": "High Tom 1"}, # Space 2 (between top and 2nd line)
+    48: {"step": "D", "octave": 5, "name": "High Tom 2"}, # Line 2
+    47: {"step": "B", "octave": 4, "name": "Mid Tom 1"},  # Line 3 (Middle line)
+    45: {"step": "A", "octave": 4, "name": "Low Tom 1"},  # Space 4
+    43: {"step": "A", "octave": 4, "name": "High Floor Tom"}, # Alternate mapping for Floor Tom (Space 4)
+    41: {"step": "G", "octave": 4, "name": "Low Floor Tom"},  # Line 4 (Very Low)
     
     # Hi-Hat
     42: {"step": "G", "octave": 5, "notehead": "x", "name": "Closed Hi-Hat"}, # Closed HH (Space above top line)
@@ -48,18 +48,20 @@ DRUM_MAPPING = {
     # Ride Cymbal (Top line - F5)
     51: {"step": "F", "octave": 5, "notehead": "x", "name": "Ride Cymbal 1"},
     59: {"step": "F", "octave": 5, "notehead": "x", "name": "Ride Cymbal 2"},
-    53: {"step": "F", "octave": 5, "notehead": "diamond", "name": "Ride Bell"}, # Ride Bell
+    53: {"step": "F", "octave": 5, "notehead": "diamond", "name": "Ride Bell"},
     
-    # Crash Cymbals (First ledger line above - A5)
-    49: {"step": "A", "octave": 5, "notehead": "x", "name": "Crash Cymbal 1"},
-    57: {"step": "B", "octave": 5, "notehead": "x", "name": "Crash Cymbal 2"}, # Crash 2 (above A5)
-    55: {"step": "A", "octave": 5, "notehead": "x", "name": "Splash Cymbal"}, # Splash
-    52: {"step": "A", "octave": 5, "notehead": "x", "name": "Chinese Cymbal"}, # China
+    # Crash Cymbals
+    49: {"step": "A", "octave": 5, "notehead": "x", "name": "Crash Cymbal High"}, # First ledger line above
+    57: {"step": "G", "octave": 5, "notehead": "x", "name": "Crash Cymbal Mid"},  # Space above top line
+    55: {"step": "A", "octave": 5, "notehead": "x", "name": "Splash Cymbal"},
+    
+    # China Cymbal (Space above first ledger line - B5)
+    52: {"step": "B", "octave": 5, "notehead": "diamond", "name": "Chinese Cymbal"},
     
     # Percussion
-    56: {"step": "G", "octave": 5, "notehead": "triangle", "name": "Cowbell"}, # Cowbell
-    54: {"step": "B", "octave": 5, "notehead": "diamond", "name": "Tambourine"}, # Tambourine
-    31: {"step": "G", "octave": 4, "notehead": "x", "name": "Sticks / Click"}, # Sticks/Click
+    56: {"step": "G", "octave": 5, "notehead": "triangle", "name": "Cowbell"},
+    54: {"step": "B", "octave": 5, "notehead": "diamond", "name": "Tambourine"},
+    31: {"step": "G", "octave": 4, "notehead": "x", "name": "Sticks / Click"},
 }
 
 def get_fallback_drum(fret):
@@ -324,14 +326,16 @@ class MusicXMLGenerator:
             
             # Find the actual human-readable name from our dictionary
             instr_name = f"Drum {f}"
+            midi_pitch = f
             if f in self.mapping:
                 instr_name = self.mapping[f].get("name", instr_name)
+                midi_pitch = self.mapping[f].get("midi_pitch", f)
             
             ET.SubElement(score_instr, "instrument-name").text = instr_name
             midi_instr = ET.SubElement(self.score_part, "midi-instrument", id=instr_id)
             ET.SubElement(midi_instr, "midi-channel").text = "10"
             ET.SubElement(midi_instr, "midi-program").text = "1"
-            ET.SubElement(midi_instr, "midi-unpitched").text = str(f)
+            ET.SubElement(midi_instr, "midi-unpitched").text = str(midi_pitch)
 
         measures = track_data.get("measures", [])
         tempos = {}
@@ -374,7 +378,6 @@ class MusicXMLGenerator:
                     
                     clef = ET.SubElement(attr, "clef")
                     ET.SubElement(clef, "sign").text = "percussion"
-                    ET.SubElement(clef, "line").text = "2"
                 
                 sig = measure_data.get("signature")
                 if sig:
