@@ -168,13 +168,33 @@ function switchTab(tabName) {
         }
     });
 
+    // Clean up score preview if navigating away via tabs
+    if (!panels.result.classList.contains('hidden')) {
+        if (window.playbackEngine && window.playbackEngine.isPlaying) {
+            stopPlayback();
+        }
+        const mainCard = document.querySelector('main');
+        if (mainCard) {
+            mainCard.classList.add('max-w-3xl');
+            mainCard.classList.remove('max-w-6xl');
+        }
+        panels.result.classList.add('hidden');
+        panels.result.classList.remove('flex');
+    }
+
     // Show active panel
     Object.keys(panels).forEach(key => {
         if (key === tabName) {
             panels[key].classList.remove('hidden');
-            panels[key].classList.add('block');
+            if (key === 'library') {
+                panels[key].classList.add('flex');
+                panels[key].classList.remove('block');
+            } else {
+                panels[key].classList.add('block');
+                panels[key].classList.remove('flex');
+            }
         } else if (['search', 'url', 'settings', 'library'].includes(key)) {
-            panels[key].classList.remove('block');
+            panels[key].classList.remove('block', 'flex');
             panels[key].classList.add('hidden');
         }
     });
@@ -318,9 +338,9 @@ function renderSearchResults(results) {
         }
 
         html += `
-            <div class="search-result-item bg-surface border border-subtle rounded-xl p-4 cursor-pointer flex justify-between items-center group" 
+            <div class="search-result-item bg-surface border border-subtle rounded-xl p-4 cursor-pointer flex justify-between items-center group w-full min-w-0" 
                  onclick="startDownloadFromSearch(${song.songId}, '${song.artist.replace(/'/g, "\\'")}', '${song.title.replace(/'/g, "\\'")}')">
-                <div class="overflow-hidden pr-4">
+                <div class="flex-1 min-w-0 pr-4">
                     <h4 class="text-primary font-medium truncate group-hover:text-accent transition-colors">${song.title}</h4>
                     <p class="text-secondary text-sm truncate">${song.artist}</p>
                 </div>
@@ -408,7 +428,13 @@ downloadManager.addEventListener('download-start', (e) => {
 
     panels.search.classList.add('hidden');
     panels.url.classList.add('hidden');
-    tabs.search.parentElement.classList.add('hidden');
+
+    if (window.innerWidth >= 640) {
+        tabs.search.parentElement.classList.add('hidden');
+    } else {
+        tabs.search.parentElement.classList.add('pointer-events-none', 'opacity-50');
+    }
+
     panels.result.classList.add('hidden');
     panels.result.classList.remove('flex');
 
@@ -581,11 +607,14 @@ async function showSuccess(result, downloadUrl) {
     panels.progress.classList.add('hidden');
     panels.progress.classList.remove('flex');
     panels.progress.parentElement.classList.remove('progress-pulse');
+    tabs.search.parentElement.classList.remove('pointer-events-none', 'opacity-50');
 
     // Widen the main container for the score
-    const mainCard = document.querySelector('main.glass-card');
-    mainCard.classList.remove('max-w-3xl');
-    mainCard.classList.add('max-w-6xl');
+    const mainCard = document.querySelector('main');
+    if (mainCard) {
+        mainCard.classList.remove('max-w-3xl');
+        mainCard.classList.add('max-w-6xl');
+    }
 
     panels.result.classList.remove('hidden');
     panels.result.classList.add('flex');
@@ -646,6 +675,14 @@ async function showSuccess(result, downloadUrl) {
             if (volumeBtn) {
                 volumeBtn.classList.remove('hidden');
                 volumeBtn.classList.add('flex');
+            }
+
+            // Auto-scroll to bottom on mobile so controls are visible
+            if (window.innerWidth < 640 && mainCard) {
+                const scrollContainer = mainCard.querySelector('.max-sm\\:overflow-y-auto');
+                if (scrollContainer) {
+                    scrollContainer.scrollTop = scrollContainer.scrollHeight;
+                }
             }
         }, (err) => {
             console.error("OSMD Load Error:", err);
@@ -715,11 +752,11 @@ window.playbackEngine.addEventListener('cursor-update', (e) => {
         appCustomCursor.style.pointerEvents = "none";
         appCustomCursor.style.display = "none";
     }
-    
+
     if (ev.parent && appCustomCursor.parentElement !== ev.parent) {
         ev.parent.appendChild(appCustomCursor);
     }
-    
+
     appCustomCursor.style.left = ev.left;
     appCustomCursor.style.top = ev.top;
     appCustomCursor.style.width = ev.width;
@@ -868,9 +905,11 @@ function resetUI() {
     }
 
     // Restore main container width
-    const mainCard = document.querySelector('main.glass-card');
-    mainCard.classList.add('max-w-3xl');
-    mainCard.classList.remove('max-w-6xl');
+    const mainCard = document.querySelector('main');
+    if (mainCard) {
+        mainCard.classList.add('max-w-3xl');
+        mainCard.classList.remove('max-w-6xl');
+    }
 
     panels.result.classList.add('hidden');
     panels.result.classList.remove('flex');
@@ -882,7 +921,7 @@ function resetUI() {
     panels.progress.classList.remove('flex');
     panels.progress.parentElement.classList.remove('progress-pulse');
 
-    tabs.search.parentElement.classList.remove('hidden');
+    tabs.search.parentElement.classList.remove('hidden', 'pointer-events-none', 'opacity-50');
 
     // Default to active tab
     switchTab(activeTab);
@@ -891,16 +930,16 @@ function resetUI() {
 // --- Settings & UI Global Actions ---
 
 function updateDarkModeIcon() {
-    const moon = document.getElementById('icon-moon');
-    const sun = document.getElementById('icon-sun');
+    const moons = document.querySelectorAll('.icon-moon');
+    const suns = document.querySelectorAll('.icon-sun');
 
-    if (moon && sun) {
+    if (moons.length > 0 && suns.length > 0) {
         if (window.osmdDarkModeGlobal) {
-            moon.classList.remove('hidden');
-            sun.classList.add('hidden');
+            moons.forEach(m => m.classList.remove('hidden'));
+            suns.forEach(s => s.classList.add('hidden'));
         } else {
-            moon.classList.add('hidden');
-            sun.classList.remove('hidden');
+            moons.forEach(m => m.classList.add('hidden'));
+            suns.forEach(s => s.classList.remove('hidden'));
         }
     }
 }
@@ -946,7 +985,8 @@ window.applyDarkThemeEngravingRules = function (osmd) {
 }
 
 function toggleOSMDDarkMode() {
-    const btn = document.querySelector('.osmd-toggle');
+    // Determine which button was likely clicked based on screen size (or we can just pass the first visible one)
+    const btn = window.innerWidth >= 640 ? document.querySelector('.fixed.top-4 .osmd-toggle') : document.querySelector('#main-navigation .osmd-toggle');
 
     runWithOSMDLoader(btn, () => {
         window.osmdDarkModeGlobal = !window.osmdDarkModeGlobal;
@@ -1008,6 +1048,13 @@ function updateStemButtonIcon() {
  */
 function runWithOSMDLoader(btnElement, renderCallback, onComplete) {
     const osmdContainer = document.getElementById('osmd-container');
+
+    // Capture scroll positions to prevent jump during re-renders
+    const mainScroll = document.querySelector('main .max-sm\\:overflow-y-auto');
+    const sheetScroll = document.querySelector('.print-wrapper');
+    const mainScrollTop = mainScroll ? mainScroll.scrollTop : 0;
+    const sheetScrollTop = sheetScroll ? sheetScroll.scrollTop : 0;
+
     if (osmdContainer) {
         osmdContainer.style.opacity = '0.5';
         osmdContainer.style.pointerEvents = 'none';
@@ -1033,7 +1080,7 @@ function runWithOSMDLoader(btnElement, renderCallback, onComplete) {
 
         const isSmallBtn = btnElement.classList.contains('w-11');
         const isOsmdToggle = btnElement.classList.contains('osmd-toggle');
-        const spinnerSize = isOsmdToggle ? 'w-4 h-4' : (isSmallBtn ? 'w-5 h-5' : 'w-5 h-5 mx-auto');
+        const spinnerSize = isOsmdToggle ? 'w-5 h-5 sm:w-4 sm:h-4 mb-1 sm:mb-0 sm:mr-1.5' : (isSmallBtn ? 'w-5 h-5' : 'w-5 h-5 mx-auto');
 
         spinnerContainer.innerHTML = `<i data-feather="loader" class="${spinnerSize} animate-spin"></i>`;
 
@@ -1052,6 +1099,17 @@ function runWithOSMDLoader(btnElement, renderCallback, onComplete) {
             hiddenElements.forEach(child => child.classList.remove('hidden'));
             btnElement.disabled = false;
         }
+
+        // Restore scroll positions strictly for toggles (btnElement exists) on mobile
+        if (btnElement && window.innerWidth < 640) {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    if (mainScroll) mainScroll.scrollTop = mainScrollTop;
+                    if (sheetScroll) sheetScroll.scrollTop = sheetScrollTop;
+                });
+            });
+        }
+
         if (onComplete) onComplete();
     };
 
@@ -1150,7 +1208,7 @@ window.postProcessOSMDRender = function () {
     svgs.forEach(svg => {
         const texts = Array.from(svg.querySelectorAll('text'));
         const repeatTexts = texts.filter(t => t.textContent.match(/^\d+x$/));
-        
+
         repeatTexts.forEach(rt => {
             const rtX = parseFloat(rt.getAttribute('x') || 0);
             // Shift left by 35 units to clear the first note and align precisely over the repeat barline
@@ -1415,7 +1473,7 @@ function setGlobalVolume(val) {
     // Update Icon opacity based on volume
     const iconVol = document.getElementById('icon-volume');
     const iconMuted = document.getElementById('icon-volume-muted');
-    
+
     if (iconVol && iconMuted) {
         if (globalVolume === 0) {
             iconVol.classList.add('hidden');
