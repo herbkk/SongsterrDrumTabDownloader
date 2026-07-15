@@ -12,8 +12,6 @@ from urllib.parse import urlparse
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.common.exceptions import WebDriverException
 
 from .api import HEADERS, DRUM_INSTRUMENT_ID
@@ -35,8 +33,9 @@ def setup_driver() -> webdriver.Chrome:
         "goog:loggingPrefs", {"performance": "ALL", "browser": "ALL"}
     )
     
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=chrome_options)
+    # Rely on built-in Selenium Manager (Selenium 4.6+) instead of webdriver-manager
+    # This automatically matches the driver to the installed browser version (e.g. Chromium 150)
+    driver = webdriver.Chrome(options=chrome_options)
     # Set generous page load timeout
     driver.set_page_load_timeout(30)
     return driver
