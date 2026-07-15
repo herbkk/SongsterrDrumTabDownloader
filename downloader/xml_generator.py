@@ -12,7 +12,8 @@ import copy
 logger = logging.getLogger(__name__)
 
 # Divisions per quarter note (determines temporal resolution)
-DIVISIONS = 16
+# Set to 480 to allow integer subdivision of triplets (16th triplets = 80 ticks)
+DIVISIONS = 480
 
 # Mapping from Songsterr fret (MIDI pitch) to MusicXML <unpitched> elements
 # display-step: Note letter (A-G)
@@ -193,6 +194,31 @@ def apply_auto_beaming(measure_elem, divisions):
                         beam_elem.text = "continue"
 
 
+def get_songsterr_measure_number(measures: list[dict], target_mi: int) -> int:
+    """
+    Calculates the visual measure number displayed on the Songsterr UI.
+    Songsterr's measure numbering starts at 1, but if the first measure is an incomplete
+    pickup measure (duration < time signature), it numbers the first measure as 0.
+    """
+    if not measures:
+        return target_mi + 1
+        
+    m0 = measures[0]
+    dur = 0.0
+    if m0.get('voices'):
+        for b in m0['voices'][0].get('beats', []):
+            d = b.get('duration', [1, 4])
+            dur += d[0] / d[1]
+            
+    sig = m0.get('signature', [4, 4])
+    sig_dur = sig[0] / sig[1]
+    
+    # If the first measure is smaller than the time signature, it's a pickup (Measure 0)
+    if sig_dur - dur > 0.01:
+        return target_mi
+    else:
+        return target_mi + 1
+
 def get_unmapped_frets(track_data: dict, custom_mapping: dict = None) -> list:
     """Scan track data for frets not present in DRUM_MAPPING or custom_mapping."""
     unmapped = {}
@@ -201,24 +227,30 @@ def get_unmapped_frets(track_data: dict, custom_mapping: dict = None) -> list:
         # custom_mapping keys might be strings if coming from JSON
         combined_mapping.update({int(k): v for k, v in custom_mapping.items()})
         
-    for mi, m in enumerate(track_data.get("measures", [])):
+    measures = track_data.get("measures", [])
+    for mi, m in enumerate(measures):
         for v in m.get("voices", []):
             for b in v.get("beats", []):
                 for n in b.get("notes", []):
                     f = n.get("fret")
                     if f is not None and f not in combined_mapping:
                         if f not in unmapped:
-                            unmapped[f] = {"fret": f, "first_measure": mi}
+                            unmapped[f] = {
+                                "fret": f, 
+                                "first_measure": mi,
+                                "display_measure": get_songsterr_measure_number(measures, mi)
+                            }
     return [unmapped[f] for f in sorted(unmapped.keys())]
 
 
 class MusicXMLGenerator:
-    def __init__(self, artist: str, title: str, custom_mapping: dict = None, bpm: int = None, disable_fallback_colors: bool = False, stem_direction: str = "up"):
+    def __init__(self, artist: str, title: str, custom_mapping: dict = None, bpm: int = None, disable_fallback_colors: bool = False, stem_direction: str = "up", start_measure_number: int = 1):
         self.artist = artist
         self.title = title
         self.bpm = bpm
         self.disable_fallback_colors = disable_fallback_colors
         self.stem_direction = stem_direction
+        self.start_measure_number = start_measure_number
         
         self.mapping = DRUM_MAPPING.copy()
         if custom_mapping:
@@ -328,7 +360,7 @@ class MusicXMLGenerator:
         active_ending = None
 
         for mi, measure_data in enumerate(measures):
-            measure_elem = ET.SubElement(self.part, "measure", number=str(mi + 1))
+            measure_elem = ET.SubElement(self.part, "measure", number=str(mi + self.start_measure_number))
             
             # Attributes for first measure or when changed
             # (Songsterr sometimes repeats signature, but we check if we need it)
@@ -702,11 +734,12 @@ def generate_musicxml(track_data: dict, output_path: str, artist: str = "Unknown
 
 def generate_measure_preview_xml(track_data: dict, measure_index: int, highlight_fret: int = None) -> str:
     """Generate a tiny MusicXML string for a few measures, for preview purposes."""
-    generator = MusicXMLGenerator("Preview", "Preview", None, None, disable_fallback_colors=True)
-    
     measures = track_data.get("measures", [])
-    start_idx = max(0, measure_index - 1)
-    end_idx = min(len(measures), measure_index + 2)
+    display_num = get_songsterr_measure_number(measures, measure_index)
+    generator = MusicXMLGenerator("Preview", "Preview", None, None, disable_fallback_colors=True, start_measure_number=display_num)
+    
+    start_idx = measure_index
+    end_idx = min(len(measures), measure_index + 1)
     
     sig = [4, 4]
     for mi, m in enumerate(measures):

@@ -120,19 +120,21 @@ class VisualMapper {
                         Drum ID: ${fret}
                     </div>`;
                     
-            if (data.first_measure) {
+            if (data.display_measure !== undefined && data.display_measure !== null) {
+                const measureNum = data.display_measure;
                 infoHtml += `
                     <div class="flex items-center space-x-2">
-                        <span class="text-xs text-secondary">First appears in Measure ${data.first_measure}</span>`;
+                        <span class="text-xs text-secondary">First appears in Measure ${measureNum}</span>`;
                 infoHtml += `</div>`;
             }
             infoHtml += `</div>`;
 
             let previewHtml = '';
             if (data.preview_xml) {
+                const measureNum = (data.display_measure !== undefined && data.display_measure !== null) ? data.display_measure : '?';
                 previewHtml = `
                     <div class="mt-4 border-t border-subtle pt-4">
-                        <div class="text-xs text-secondary mb-2 font-medium">Context Preview (Measure ${data.first_measure}):</div>
+                        <div class="text-xs text-secondary mb-2 font-medium">Context Preview (Measure ${measureNum}):</div>
                         <div class="rounded-md overflow-hidden border border-slate-700 bg-transparent" id="preview-osmd-${fret}"></div>
                     </div>
                 `;

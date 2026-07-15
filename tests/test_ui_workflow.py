@@ -1,4 +1,5 @@
 import time
+import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -113,5 +114,49 @@ def test_direct_url_download_and_render_flow(server_url, driver):
     wait.until(
         lambda d: len(osmd_container.find_elements(By.TAG_NAME, "svg")) > 0,
         message="OSMD did not render SVG elements after re-opening."
+    )
+
+def test_unknown_drum_mapping_flow(server_url, driver):
+    driver.get(server_url)
+    wait = WebDriverWait(driver, 30)
+    
+    # Switch to URL tab
+    url_tab = wait.until(EC.element_to_be_clickable((By.ID, "tab-url")))
+    url_tab.click()
+    wait.until(EC.visibility_of_element_located((By.ID, "panel-url")))
+    
+    # Enter URL with unknown drums (Toto - Rosanna)
+    url_input = driver.find_element(By.ID, "url-input")
+    url_input.clear()
+    url_input.send_keys("https://www.songsterr.com/a/wsa/toto-rosanna-drum-tab-s19993")
+    
+    download_btn = wait.until(EC.element_to_be_clickable((By.ID, "btn-download-url")))
+    download_btn.click()
+    
+    # Wait for the mapping UI to appear instead of the result panel
+    wait.until(
+        lambda d: d.find_element(By.ID, "panel-mapping").is_displayed(),
+        message="Mapping panel did not appear for a song with unknown drums."
+    )
+    
+    # Click Submit Mapping button
+    submit_btn = wait.until(EC.element_to_be_clickable((By.ID, "btn-submit-mapping")))
+    submit_btn.click()
+    
+    # Now it should proceed to download and render or show an error
+    wait.until(
+        lambda d: d.find_element(By.ID, "panel-result").is_displayed() or d.find_element(By.ID, "panel-error").is_displayed(),
+        message="Neither Result nor Error panel appeared after submitting mapping."
+    )
+    
+    if driver.find_element(By.ID, "panel-error").is_displayed():
+        error_msg = driver.find_element(By.ID, "error-message").text
+        pytest.fail(f"Backend returned an error after mapping submission: {error_msg}")
+    
+    # Verify OSMD container has rendered something
+    osmd_container = driver.find_element(By.ID, "osmd-container")
+    wait.until(
+        lambda d: len(osmd_container.find_elements(By.TAG_NAME, "svg")) > 0,
+        message="OSMD did not render any SVG elements."
     )
 

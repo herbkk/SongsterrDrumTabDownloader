@@ -199,8 +199,10 @@ function switchTab(tabName) {
         }
     });
 
-    if (tabName === 'search') searchInput.focus();
-    if (tabName === 'url') urlInput.focus();
+    if (window.innerWidth >= 640) {
+        if (tabName === 'search') searchInput.focus();
+        if (tabName === 'url') urlInput.focus();
+    }
     if (tabName === 'library') {
         // Sync sort pill active state to persisted preference
         document.querySelectorAll('.library-sort-pill').forEach(pill => {
@@ -470,6 +472,54 @@ downloadManager.addEventListener('download-resume', (e) => {
 downloadManager.addEventListener('download-complete', (e) => {
     showSuccess(e.detail.result, e.detail.url);
 });
+
+function showMappingUI(unmappedFrets, songUrl) {
+    panels.search.classList.add('hidden');
+    panels.url.classList.add('hidden');
+    panels.result.classList.add('hidden');
+    panels.result.classList.remove('flex');
+    panels.progress.classList.add('hidden');
+    panels.progress.classList.remove('flex');
+    
+    // Hide nav bar cleanly
+    if (window.innerWidth >= 640) {
+        tabs.search.parentElement.classList.add('hidden');
+    } else {
+        tabs.search.parentElement.classList.add('pointer-events-none', 'opacity-50');
+    }
+
+    panels.mapping.classList.remove('hidden');
+    panels.mapping.classList.add('flex');
+
+    const urlContainer = document.getElementById('mapping-song-url-container');
+    if (urlContainer && songUrl) {
+        urlContainer.innerHTML = `<a href="${songUrl}" target="_blank" class="hover:underline flex items-center justify-center"><i data-feather="external-link" class="w-3 h-3 mr-1"></i>View Score on Songsterr</a>`;
+        if (window.feather) window.feather.replace();
+    } else if (urlContainer) {
+        urlContainer.innerHTML = '';
+    }
+
+    const mappingDict = {};
+    if (Array.isArray(unmappedFrets)) {
+        unmappedFrets.forEach(item => {
+            mappingDict[item.fret] = {
+                step: 'C',
+                octave: 5,
+                notehead: 'x',
+                name: 'Drum ' + item.fret,
+                first_measure: item.first_measure,
+                display_measure: item.display_measure,
+                preview_xml: item.preview_xml
+            };
+        });
+    } else {
+        Object.assign(mappingDict, unmappedFrets);
+    }
+
+    const container = document.getElementById('mapping-container');
+    container.innerHTML = '';
+    window.currentInterceptMapper = new VisualMapper(container, mappingDict, false, songUrl);
+}
 
 downloadManager.addEventListener('requires-mapping', (e) => {
     showMappingUI(e.detail.unmapped_frets, e.detail.song_url);
