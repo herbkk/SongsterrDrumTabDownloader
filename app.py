@@ -517,5 +517,14 @@ def _proceed_with_generation(task_id: str, track_data: dict, artist: str, title:
 
 if __name__ == "__main__":
     print("\n  🥁 Songsterr Drum Tab Downloader")
-    print(f"  → Open http://localhost:5000 in your browser\n")
-    app.run(debug=True, host="0.0.0.0", port=5000, threaded=True)
+    
+    cert_path = os.path.join(BASE_DIR, 'certs', 'cert.pem')
+    key_path = os.path.join(BASE_DIR, 'certs', 'key.pem')
+    
+    if os.path.exists(cert_path) and os.path.exists(key_path):
+        print("  → SSL Certificates found! Starting with HTTPS.")
+        print("  → Open https://localhost:5000 in your browser\n")
+        app.run(debug=True, host="0.0.0.0", port=5000, threaded=True, ssl_context=(cert_path, key_path))
+    else:
+        print("  → Open http://localhost:5000 in your browser\n")
+        app.run(debug=True, host="0.0.0.0", port=5000, threaded=True)

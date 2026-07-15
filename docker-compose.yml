@@ -9,6 +9,8 @@ services:
     volumes:
       # Optional: Maps the downloads folder so PDFs are saved to your host filesystem
       - ./downloads:/app/downloads
+      # Optional: Mount SSL certificates here to automatically enable HTTPS for PWAs
+      - ./certs:/app/certs:ro
     restart: unless-stopped
 
   watchtower:
