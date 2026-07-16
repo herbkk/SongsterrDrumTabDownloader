@@ -58,6 +58,15 @@ export function setBaseTheme(themeId) {
     document.documentElement.setAttribute('data-base-theme', themeId);
     localStorage.setItem('songsterr_base_theme', themeId);
 
+    // Update PWA status bar color to match the app background
+    setTimeout(() => {
+        const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        if (metaThemeColor) {
+            const bodyColor = getComputedStyle(document.body).getPropertyValue('--bg-body').trim() || theme.primary;
+            metaThemeColor.setAttribute('content', bodyColor);
+        }
+    }, 50);
+
     // Update the picker UI
     document.querySelectorAll('#base-theme-grid .theme-card').forEach(card => {
         if (card.dataset.themeId === themeId) {

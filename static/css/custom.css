@@ -377,7 +377,7 @@ body { background-color: var(--bg-body); color: var(--text-primary); }
 /* Material Design 3 Mobile Label Logic */
 @media (max-width: 639px) {
   .tab-btn {
-    height: 60px; /* Lock height to prevent the bar from resizing */
+    height: calc(60px + env(safe-area-inset-bottom, 0px)); /* Accommodate safe area */
   }
   .tab-btn .tab-label {
     font-size: 0.65rem;
@@ -435,12 +435,7 @@ body { background-color: var(--bg-body); color: var(--text-primary); }
   background-color: rgba(255, 255, 255, 0.03);
 }
 
-/* Ensure padding on mobile devices for safe areas */
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
-  #main-navigation {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-}
+/* Removed #main-navigation safe area padding to allow tab-btn to cover the clickable area */
 
 
 /* ─── Search Result Items ────────────────────────────────────────────────── */
