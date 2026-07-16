@@ -115,26 +115,26 @@ export function renderLibraryItem(item) {
     }
 
     const coverHtml = item.coverUrl
-        ? `<img src="${item.coverUrl}" alt="Cover" class="w-16 h-16 rounded-md object-cover mr-4 border border-base shadow-lg shrink-0">`
-        : `<div class="w-16 h-16 rounded-md bg-surface border border-base mr-4 flex items-center justify-center shrink-0 shadow-inner"><i data-feather="music" class="w-6 h-6 text-muted"></i></div>`;
+        ? `<img src="${item.coverUrl}" alt="Cover" class="w-16 h-16 rounded-md object-cover mr-3 sm:mr-4 border border-base shadow-sm shrink-0">`
+        : `<div class="w-16 h-16 rounded-md bg-surface border border-base mr-3 sm:mr-4 flex items-center justify-center shrink-0 shadow-inner"><i data-feather="music" class="w-6 h-6 text-muted"></i></div>`;
 
     return `
-        <div class="flex items-center justify-between p-4 bg-input border border-subtle rounded-xl hover:bg-surface transition-colors group">
+        <div class="flex items-center justify-between p-3 sm:p-4 bg-input border border-subtle rounded-xl hover:bg-surface transition-colors group">
             ${coverHtml}
-            <div class="flex-1 min-w-0 mr-4">
-                <h3 class="text-primary font-medium truncate">${item.title}</h3>
+            <div class="flex-1 min-w-0 mr-3">
+                <h3 class="text-primary font-medium text-base truncate">${item.title}</h3>
                 <p class="text-secondary text-sm truncate">${item.artist}</p>
                 <div class="flex items-center mt-1">
                     <p class="text-muted text-xs">Downloaded: ${dateStr}</p>
                     ${badgeHtml}
                 </div>
             </div>
-            <div class="flex items-center space-x-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                <button onclick="window.startDownload({url: '${item.url}'})" class="p-2 text-accent hover:text-primary hover:bg-white/5 rounded-lg transition-colors" data-tooltip="Re-open">
-                    <i data-feather="external-link" class="w-4 h-4"></i>
+            <div class="flex flex-col items-center justify-center space-y-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
+                <button onclick="window.removeFromLibrary('${item.url}')" class="p-1.5 text-red-400 hover:text-red-300 hover:bg-white/5 rounded-md transition-colors" data-tooltip="Delete">
+                    <i data-feather="trash-2" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
                 </button>
-                <button onclick="window.removeFromLibrary('${item.url}')" class="p-2 text-red-400 hover:text-red-300 hover:bg-white/5 rounded-lg transition-colors" data-tooltip="Delete">
-                    <i data-feather="trash-2" class="w-4 h-4"></i>
+                <button onclick="window.startDownload({url: '${item.url}'})" class="p-1.5 text-accent hover:text-primary hover:bg-white/5 rounded-md transition-colors" data-tooltip="Re-open">
+                    <i data-feather="external-link" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
                 </button>
             </div>
         </div>

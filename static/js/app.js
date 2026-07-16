@@ -434,7 +434,7 @@ downloadManager.addEventListener('download-start', (e) => {
     if (window.innerWidth >= 640) {
         tabs.search.parentElement.classList.add('hidden');
     } else {
-        tabs.search.parentElement.classList.add('pointer-events-none', 'opacity-50');
+        Object.values(tabs).forEach(tab => tab.classList.add('pointer-events-none', 'opacity-50'));
     }
 
     panels.result.classList.add('hidden');
@@ -485,7 +485,7 @@ function showMappingUI(unmappedFrets, songUrl) {
     if (window.innerWidth >= 640) {
         tabs.search.parentElement.classList.add('hidden');
     } else {
-        tabs.search.parentElement.classList.add('pointer-events-none', 'opacity-50');
+        Object.values(tabs).forEach(tab => tab.classList.add('pointer-events-none', 'opacity-50'));
     }
 
     panels.mapping.classList.remove('hidden');
@@ -662,7 +662,8 @@ async function showSuccess(result, downloadUrl) {
     panels.progress.classList.add('hidden');
     panels.progress.classList.remove('flex');
     panels.progress.parentElement.classList.remove('progress-pulse');
-    tabs.search.parentElement.classList.remove('pointer-events-none', 'opacity-50');
+    tabs.search.parentElement.classList.remove('hidden', 'pointer-events-none', 'opacity-50');
+    Object.values(tabs).forEach(tab => tab.classList.remove('pointer-events-none', 'opacity-50'));
 
     // Widen the main container for the score
     const mainCard = document.querySelector('main');

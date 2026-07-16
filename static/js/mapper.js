@@ -135,7 +135,9 @@ class VisualMapper {
                 previewHtml = `
                     <div class="mt-4 border-t border-subtle pt-4">
                         <div class="text-xs text-secondary mb-2 font-medium">Context Preview (Measure ${measureNum}):</div>
-                        <div class="rounded-md overflow-hidden border border-slate-700 bg-transparent" id="preview-osmd-${fret}"></div>
+                        <div class="rounded-md overflow-x-auto custom-scrollbar border border-slate-700 bg-transparent w-full">
+                            <div id="preview-osmd-${fret}" style="min-width: 500px;"></div>
+                        </div>
                     </div>
                 `;
             }
