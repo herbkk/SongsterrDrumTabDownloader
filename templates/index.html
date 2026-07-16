@@ -97,25 +97,25 @@
             <!-- Tabs / Navigation -->
             <div id="main-navigation" class="fixed bottom-0 left-0 right-0 z-40 flex sm:relative sm:z-auto overflow-x-auto hide-scrollbar border-t sm:border-t-0 sm:border-b border-subtle bg-surface/90 sm:bg-surface/30 backdrop-blur-xl sm:backdrop-blur-none transition-all duration-300 shadow-[0_-4px_15px_-3px_rgba(0,0,0,0.1)] sm:shadow-none">
                 <button id="tab-search"
-                    class="tab-btn active flex flex-col sm:flex-row items-center justify-center flex-1 min-w-0 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:py-4 px-1 sm:px-6 text-sm font-medium text-secondary touch-manipulation"
+                    class="tab-btn active flex flex-col sm:flex-row items-center justify-center flex-1 min-w-0 pt-3 pb-3 sm:py-4 px-1 sm:px-6 text-sm font-medium text-secondary touch-manipulation"
                     onclick="switchTab('search')">
                     <i data-feather="search" class="w-5 h-5 sm:w-4 sm:h-4 mb-1 sm:mb-0 sm:mr-1.5 transition-transform"></i>
                     <span class="tab-label whitespace-nowrap">Search</span>
                 </button>
                 <button id="tab-url"
-                    class="tab-btn flex flex-col sm:flex-row items-center justify-center flex-1 min-w-0 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:py-4 px-1 sm:px-6 text-sm font-medium text-secondary touch-manipulation"
+                    class="tab-btn flex flex-col sm:flex-row items-center justify-center flex-1 min-w-0 pt-3 pb-3 sm:py-4 px-1 sm:px-6 text-sm font-medium text-secondary touch-manipulation"
                     onclick="switchTab('url')">
                     <i data-feather="link" class="w-5 h-5 sm:w-4 sm:h-4 mb-1 sm:mb-0 sm:mr-1.5 transition-transform"></i>
                     <span class="tab-label whitespace-nowrap">URL</span>
                 </button>
                 <button id="tab-library"
-                    class="tab-btn flex flex-col sm:flex-row items-center justify-center flex-1 min-w-0 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:py-4 px-1 sm:px-6 text-sm font-medium text-secondary touch-manipulation"
+                    class="tab-btn flex flex-col sm:flex-row items-center justify-center flex-1 min-w-0 pt-3 pb-3 sm:py-4 px-1 sm:px-6 text-sm font-medium text-secondary touch-manipulation"
                     onclick="switchTab('library')">
                     <i data-feather="book" class="w-5 h-5 sm:w-4 sm:h-4 mb-1 sm:mb-0 sm:mr-1.5 transition-transform"></i>
                     <span class="tab-label whitespace-nowrap">Library</span>
                 </button>
                 <button id="tab-settings"
-                    class="tab-btn flex flex-col sm:flex-row items-center justify-center flex-1 min-w-0 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:py-4 px-1 sm:px-6 text-sm font-medium text-secondary touch-manipulation"
+                    class="tab-btn flex flex-col sm:flex-row items-center justify-center flex-1 min-w-0 pt-3 pb-3 sm:py-4 px-1 sm:px-6 text-sm font-medium text-secondary touch-manipulation"
                     onclick="switchTab('settings')">
                     <i data-feather="settings" class="w-5 h-5 sm:w-4 sm:h-4 mb-1 sm:mb-0 sm:mr-1.5 transition-transform"></i>
                     <span class="tab-label whitespace-nowrap">Settings</span>
@@ -124,7 +124,7 @@
                 <div class="w-px bg-border-base my-2 sm:my-3 hidden sm:block shrink-0"></div>
                 <div class="w-px h-8 bg-border-subtle shrink-0 self-center sm:hidden mx-1"></div>
 
-                <button onclick="toggleOSMDDarkMode()" class="osmd-toggle sm:hidden flex flex-col sm:flex-row items-center justify-center flex-1 sm:flex-none min-w-0 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:py-4 px-1 sm:px-6 text-sm font-medium text-secondary hover:text-primary transition-colors focus:outline-none group touch-manipulation"
+                <button onclick="toggleOSMDDarkMode()" class="osmd-toggle sm:hidden flex flex-col sm:flex-row items-center justify-center flex-1 sm:flex-none min-w-0 pt-3 pb-3 sm:py-4 px-1 sm:px-6 text-sm font-medium text-secondary hover:text-primary transition-colors focus:outline-none group touch-manipulation"
                     data-tooltip="Toggle Sheet Dark Mode">
                     <svg class="icon-moon w-5 h-5 sm:w-4 sm:h-4 mb-1 sm:mb-0 sm:mr-1.5 transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
@@ -426,7 +426,7 @@
                     </div>
 
                     <!-- Controls (Play, Save) -->
-                    <div class="flex flex-wrap items-center justify-between w-full gap-3 pt-2 order-3 sm:order-2">
+                    <div class="flex flex-col sm:flex-row items-end sm:items-center sm:justify-between w-full gap-3 pt-2 order-3 sm:order-2">
                         <!-- Left Controls -->
                         <div class="flex items-center space-x-2 shrink-0">
                             <button id="btn-audio-play" onclick="togglePlayback()" data-tooltip="Play Audio"
