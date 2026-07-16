@@ -154,6 +154,8 @@ def api_download():
     """
     data = request.get_json(force=True, silent=True) or {}
     song_url = data.get("url", "").strip()
+    if song_url and not song_url.startswith(("http://", "https://")):
+        song_url = "https://" + song_url
     song_id = data.get("songId")
     output_format = data.get("format", "musicxml")
     global_mapping = data.get("global_mapping", {})
