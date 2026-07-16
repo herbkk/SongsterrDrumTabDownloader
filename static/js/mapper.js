@@ -94,23 +94,25 @@ class VisualMapper {
             toolbarHtml += `</div>`;
 
             const svgHtml = `
-                <div class="relative h-40 w-full bg-surface/50 rounded-lg overflow-hidden border border-subtle cursor-ns-resize select-none staff-container">
-                    <svg width="100%" height="100%" viewBox="0 -10 100 100" preserveAspectRatio="xMidYMid meet">
-                        <!-- Staff Lines (E4 to F5) -->
-                        <line x1="10" y1="20" x2="90" y2="20" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
-                        <line x1="10" y1="30" x2="90" y2="30" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
-                        <line x1="10" y1="40" x2="90" y2="40" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
-                        <line x1="10" y1="50" x2="90" y2="50" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
-                        <line x1="10" y1="60" x2="90" y2="60" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
-                        
-                        <g class="ledger-lines" stroke="var(--text-muted)" opacity="0.8" stroke-width="1.5"></g>
+                <div class="relative h-40 w-full bg-surface/50 rounded-lg overflow-hidden border border-subtle select-none staff-container">
+                    <div class="w-full h-full overflow-x-auto overflow-y-hidden custom-scrollbar touch-pan-x">
+                        <svg width="100%" height="100%" viewBox="0 -10 100 100" preserveAspectRatio="xMidYMid meet" style="min-width: 350px; cursor: ns-resize;">
+                            <!-- Staff Lines (E4 to F5) -->
+                            <line x1="10" y1="20" x2="90" y2="20" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
+                            <line x1="10" y1="30" x2="90" y2="30" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
+                            <line x1="10" y1="40" x2="90" y2="40" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
+                            <line x1="10" y1="50" x2="90" y2="50" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
+                            <line x1="10" y1="60" x2="90" y2="60" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
+                            
+                            <g class="ledger-lines" stroke="var(--text-muted)" opacity="0.8" stroke-width="1.5"></g>
 
-                        <g class="draggable-note text-accent" transform="translate(50, ${y})">
-                            <line x1="4.5" y1="0" x2="4.5" y2="-25" stroke="currentColor" stroke-width="1.2" class="note-stem" />
-                            <g class="note-head">${getNoteheadSVG(data.notehead || 'normal')}</g>
-                        </g>
-                    </svg>
-                    <div class="absolute bottom-2 right-2 text-xs text-accent font-mono note-label">${data.step}${data.octave}</div>
+                            <g class="draggable-note text-accent" transform="translate(50, ${y})">
+                                <line x1="4.5" y1="0" x2="4.5" y2="-25" stroke="currentColor" stroke-width="1.2" class="note-stem" />
+                                <g class="note-head">${getNoteheadSVG(data.notehead || 'normal')}</g>
+                            </g>
+                        </svg>
+                    </div>
+                    <div class="absolute bottom-2 right-2 text-xs text-accent font-mono note-label pointer-events-none bg-surface/80 px-1 rounded backdrop-blur-sm">${data.step}${data.octave}</div>
                 </div>
             `;
 
@@ -241,11 +243,17 @@ class VisualMapper {
         const stem = draggableNote.querySelector('.note-stem');
 
         let isDragging = false;
+        let startY = 0;
+        let initialNoteY = 0;
+        let hasMoved = false;
+
+        const getClientY = (e) => e.touches ? e.touches[0].clientY : e.clientY;
 
         const updatePosition = (clientY) => {
             const rect = svg.getBoundingClientRect();
             const ratio = 100 / rect.height;
-            const yOffset = (clientY - rect.top) * ratio - 10;
+            const deltaY = (clientY - startY) * ratio;
+            const yOffset = initialNoteY + deltaY;
             
             const noteDef = getNoteForY(yOffset);
             draggableNote.setAttribute('transform', `translate(50, ${noteDef.y})`);
@@ -268,17 +276,45 @@ class VisualMapper {
             this.mapping[fret].octave = noteDef.octave;
         };
 
-        staffContainer.addEventListener('mousedown', (e) => {
+        const startDrag = (e) => {
             isDragging = true;
-            updatePosition(e.clientY);
-        });
-        document.addEventListener('mousemove', (e) => {
-            if (isDragging) updatePosition(e.clientY);
-        });
-        document.addEventListener('mouseup', () => {
-            if (isDragging && this.isGlobal) this.saveGlobal();
-            isDragging = false;
-        });
+            hasMoved = false;
+            startY = getClientY(e);
+            initialNoteY = getYForNote(this.mapping[fret].step, this.mapping[fret].octave);
+        };
+
+        const onDrag = (e) => {
+            if (!isDragging) return;
+            const currentY = getClientY(e);
+            
+            if (!hasMoved) {
+                if (Math.abs(currentY - startY) > 5) {
+                    hasMoved = true;
+                } else {
+                    return;
+                }
+            }
+            
+            if (e.touches && e.cancelable) e.preventDefault();
+            updatePosition(currentY);
+        };
+
+        const stopDrag = () => {
+            if (isDragging) {
+                if (hasMoved && this.isGlobal) this.saveGlobal();
+                isDragging = false;
+                hasMoved = false;
+            }
+        };
+
+        staffContainer.addEventListener('mousedown', startDrag);
+        staffContainer.addEventListener('touchstart', startDrag, { passive: true });
+        
+        document.addEventListener('mousemove', onDrag);
+        document.addEventListener('touchmove', onDrag, { passive: false });
+        
+        document.addEventListener('mouseup', stopDrag);
+        document.addEventListener('touchend', stopDrag);
         
         const initialY = getYForNote(this.mapping[fret].step, this.mapping[fret].octave);
         if (initialY <= 40) {
@@ -342,9 +378,9 @@ class VisualMapperCompact {
 
             // Shared Toolbar
             const heads = ['normal', 'x', 'circle-x', 'diamond', 'triangle'];
-            let toolbarHtml = `<div class="flex justify-between items-center bg-surface p-2 rounded-lg border border-base group-toolbar">
-                <input type="text" class="map-name bg-transparent border-none text-sm text-primary font-medium focus:ring-0 outline-none w-1/2" value="${initialData.name || 'Drum ' + initialFret}">
-                <div class="flex space-x-1">`;
+            let toolbarHtml = `<div class="flex flex-col sm:flex-row gap-2 sm:gap-0 justify-between items-stretch sm:items-center bg-surface p-2 rounded-lg border border-base group-toolbar">
+                <input type="text" class="map-name bg-transparent border-none text-sm text-primary font-medium focus:ring-0 outline-none w-full sm:w-1/2" value="${initialData.name || 'Drum ' + initialFret}">
+                <div class="flex space-x-1 sm:justify-end">`;
             
             heads.forEach(h => {
                 const active = (initialData.notehead || 'normal') === h ? 'bg-accent border-accent' : 'border-transparent';
@@ -399,21 +435,23 @@ class VisualMapperCompact {
 
             const svgHtml = `
                 <div class="relative h-40 w-full bg-surface/50 rounded-lg overflow-hidden border border-subtle select-none staff-container" data-selected="${initialFret}">
-                    <svg width="100%" height="100%" viewBox="0 -10 300 100" preserveAspectRatio="xMidYMid meet">
-                        <!-- Staff Lines -->
-                        <line x1="5" y1="20" x2="295" y2="20" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
-                        <line x1="5" y1="30" x2="295" y2="30" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
-                        <line x1="5" y1="40" x2="295" y2="40" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
-                        <line x1="5" y1="50" x2="295" y2="50" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
-                        <line x1="5" y1="60" x2="295" y2="60" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
-                        
-                        <g class="ledger-lines" stroke="var(--text-muted)" opacity="0.8" stroke-width="1.5">
-                            ${ledgersHtml}
-                        </g>
+                    <div class="w-full h-full overflow-x-auto overflow-y-hidden custom-scrollbar touch-pan-x">
+                        <svg width="100%" height="100%" viewBox="0 -10 300 100" preserveAspectRatio="xMidYMid meet" style="min-width: 450px;">
+                            <!-- Staff Lines -->
+                            <line x1="5" y1="20" x2="295" y2="20" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
+                            <line x1="5" y1="30" x2="295" y2="30" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
+                            <line x1="5" y1="40" x2="295" y2="40" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
+                            <line x1="5" y1="50" x2="295" y2="50" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
+                            <line x1="5" y1="60" x2="295" y2="60" stroke="var(--text-muted)" opacity="0.5" stroke-width="1"/>
+                            
+                            <g class="ledger-lines" stroke="var(--text-muted)" opacity="0.8" stroke-width="1.5">
+                                ${ledgersHtml}
+                            </g>
 
-                        ${notesHtml}
-                    </svg>
-                    <div class="absolute bottom-2 right-2 text-xs text-accent font-mono note-label">${initialData.step}${initialData.octave}</div>
+                            ${notesHtml}
+                        </svg>
+                    </div>
+                    <div class="absolute bottom-2 right-2 text-xs text-accent font-mono note-label pointer-events-none bg-surface/80 px-1 rounded backdrop-blur-sm">${initialData.step}${initialData.octave}</div>
                 </div>
             `;
 
@@ -504,13 +542,19 @@ class VisualMapperCompact {
         // Drag and Drop Logic
         let draggingFret = null;
         let draggingNode = null;
+        let startY = 0;
+        let initialNoteY = 0;
+        let hasMoved = false;
+
+        const getClientY = (e) => e.touches ? e.touches[0].clientY : e.clientY;
 
         const updatePosition = (clientY) => {
             if (!draggingFret || !draggingNode) return;
             
             const rect = svg.getBoundingClientRect();
             const ratio = 100 / rect.height;
-            const yOffset = (clientY - rect.top) * ratio - 10;
+            const deltaY = (clientY - startY) * ratio;
+            const yOffset = initialNoteY + deltaY;
             
             const noteDef = getNoteForY(yOffset);
             const x = draggingNode.dataset.x;
@@ -534,31 +578,57 @@ class VisualMapperCompact {
             this.mapping[draggingFret].step = noteDef.step;
             this.mapping[draggingFret].octave = noteDef.octave;
             
-            // Re-render all ledger lines for this group to keep it clean
             this.updateGroupLedgers(svg, group.frets);
+        };
+
+        const startDrag = (e, node, fret) => {
+            selectNote(fret);
+            draggingFret = fret;
+            draggingNode = node;
+            hasMoved = false;
+            startY = getClientY(e);
+            initialNoteY = getYForNote(this.mapping[fret].step, this.mapping[fret].octave);
+        };
+
+        const onDrag = (e) => {
+            if (!draggingFret) return;
+            const currentY = getClientY(e);
+            
+            if (!hasMoved) {
+                if (Math.abs(currentY - startY) > 5) {
+                    hasMoved = true;
+                } else {
+                    return;
+                }
+            }
+            
+            if (e.touches && e.cancelable) e.preventDefault();
+            updatePosition(currentY);
+        };
+
+        const stopDrag = () => {
+            if (draggingFret) {
+                if (hasMoved) this.saveGlobal();
+                draggingFret = null;
+                draggingNode = null;
+                hasMoved = false;
+            }
         };
 
         svg.querySelectorAll('.draggable-note').forEach(node => {
             node.addEventListener('mousedown', (e) => {
-                const fret = node.dataset.fret;
-                selectNote(fret);
-                draggingFret = fret;
-                draggingNode = node;
-                updatePosition(e.clientY);
+                startDrag(e, node, node.dataset.fret);
             });
+            node.addEventListener('touchstart', (e) => {
+                startDrag(e, node, node.dataset.fret);
+            }, { passive: true });
         });
 
-        document.addEventListener('mousemove', (e) => {
-            if (draggingFret) updatePosition(e.clientY);
-        });
+        document.addEventListener('mousemove', onDrag);
+        document.addEventListener('touchmove', onDrag, { passive: false });
 
-        document.addEventListener('mouseup', () => {
-            if (draggingFret) {
-                this.saveGlobal();
-                draggingFret = null;
-                draggingNode = null;
-            }
-        });
+        document.addEventListener('mouseup', stopDrag);
+        document.addEventListener('touchend', stopDrag);
     }
 
     updateGroupLedgers(svg, frets) {
@@ -588,7 +658,7 @@ class VisualMapperCompact {
 // Global State & Reset
 // -----------------------------------------------------------------------------------------
 
-let globalDrumMapping = {};
+window.globalDrumMapping = {};
 
 async function fetchDefaultsAndMerge() {
     try {
@@ -598,49 +668,21 @@ async function fetchDefaultsAndMerge() {
         
         // Merge backend defaults with local modifications
         Object.keys(backendMapping).forEach(fret => {
-            if (!globalDrumMapping[fret]) {
-                globalDrumMapping[fret] = backendMapping[fret];
+            if (!window.globalDrumMapping[fret]) {
+                window.globalDrumMapping[fret] = backendMapping[fret];
             }
         });
     } catch (e) {
         console.error("Failed to fetch mapping", e);
     }
 }
+window.fetchDefaultsAndMerge = fetchDefaultsAndMerge;
 
 // Initialize on load
 (async () => {
     try {
         const stored = localStorage.getItem('songsterr_global_mapping');
-        if (stored) globalDrumMapping = JSON.parse(stored);
+        if (stored) window.globalDrumMapping = JSON.parse(stored);
     } catch(e){}
     await fetchDefaultsAndMerge();
 })();
-
-async function resetGlobalMapping() {
-    localStorage.removeItem('songsterr_global_mapping');
-    globalDrumMapping = {};
-    await fetchDefaultsAndMerge();
-    
-    // Reset PDF & Styling UI manually
-    const pageFormatSelect = document.getElementById('style-page-format');
-    if (pageFormatSelect) pageFormatSelect.value = "A4_P";
-    
-    const zoomInput = document.getElementById('style-zoom');
-    if (zoomInput) {
-        zoomInput.value = "0.6";
-        const zoomValDisp = document.getElementById('style-zoom-val');
-        if (zoomValDisp) zoomValDisp.innerText = "0.6";
-    }
-    
-    const drawTitleCheck = document.getElementById('style-draw-title');
-    if (drawTitleCheck) drawTitleCheck.checked = true;
-    
-    const drawMeasuresCheck = document.getElementById('style-draw-measures');
-    if (drawMeasuresCheck) drawMeasuresCheck.checked = true;
-
-    // Re-render Settings UI
-    const container = document.getElementById('global-mapping-container');
-    if (container && container.children.length > 0) {
-        new VisualMapperCompact(container, globalDrumMapping);
-    }
-}

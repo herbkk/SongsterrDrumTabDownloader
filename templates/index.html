@@ -384,7 +384,7 @@
                         </h3>
                         <p class="text-sm text-secondary">We found MIDI IDs that aren't in our standard mapping. Please
                             map them below so they appear correctly in your sheet music.</p>
-                        <div class="mt-3 bg-surface/50 rounded-lg p-3 border border-slate-700/50 text-xs text-secondary max-w-lg mx-auto text-left flex items-start">
+                        <div class="mt-3 bg-input rounded-lg p-3 border border-base text-xs text-secondary max-w-lg mx-auto text-left flex items-start">
                             <i data-feather="info" class="w-4 h-4 mr-2 shrink-0 mt-0.5 text-accent"></i>
                             <span><strong>Note:</strong> The staff line position of the red notes in the previews below is mathematically generated. Because the drum is unknown, its preview height will <strong>not match</strong> the original Songsterr layout. Use the preview purely to see the rhythmic timing.</span>
                         </div>
@@ -714,7 +714,7 @@
 
     <!-- Error Toast -->
     <div id="toast"
-        class="fixed bottom-4 right-4 transform translate-y-full opacity-0 transition-all duration-300 z-50 flex items-center p-4 mb-4 text-primary bg-red-900/80 border border-red-500/50 rounded-xl shadow-2xl backdrop-blur-md"
+        class="fixed bottom-4 right-4 left-4 sm:left-auto max-w-[calc(100vw-32px)] transform translate-y-full opacity-0 transition-all duration-300 z-50 flex items-center p-4 mb-4 text-slate-100 bg-red-900/80 border border-red-500/50 rounded-xl shadow-2xl backdrop-blur-md"
         role="alert">
         <div
             class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-red-400 bg-red-900/50 rounded-lg mr-3">
@@ -722,7 +722,7 @@
         </div>
         <div id="toast-message" class="text-sm font-medium mr-4">Error message goes here.</div>
         <button type="button" onclick="hideToast('toast')"
-            class="ml-auto -mx-1.5 -my-1.5 bg-transparent text-secondary hover:text-primary rounded-lg focus:ring-2 focus:ring-slate-400 p-1.5 hover:bg-white/10 inline-flex h-8 w-8 transition-colors">
+            class="ml-auto -mx-1.5 -my-1.5 bg-transparent text-slate-300 hover:text-white rounded-lg focus:ring-2 focus:ring-slate-400 p-1.5 hover:bg-white/10 inline-flex h-8 w-8 transition-colors">
             <span class="sr-only">Close</span>
             <i data-feather="x" class="w-4 h-4"></i>
         </button>
@@ -730,7 +730,7 @@
 
     <!-- Success Toast -->
     <div id="toast-success"
-        class="fixed bottom-4 right-4 transform translate-y-full opacity-0 transition-all duration-300 z-50 flex items-center p-4 mb-4 text-primary bg-emerald-900/80 border border-emerald-500/50 rounded-xl shadow-2xl backdrop-blur-md"
+        class="fixed bottom-4 right-4 left-4 sm:left-auto max-w-[calc(100vw-32px)] transform translate-y-full opacity-0 transition-all duration-300 z-50 flex items-center p-4 mb-4 text-slate-100 bg-emerald-900/80 border border-emerald-500/50 rounded-xl shadow-2xl backdrop-blur-md"
         role="alert">
         <div
             class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-emerald-400 bg-emerald-900/50 rounded-lg mr-3">
@@ -738,7 +738,7 @@
         </div>
         <div id="toast-success-message" class="text-sm font-medium mr-4">Success message goes here.</div>
         <button type="button" onclick="hideToast('toast-success')"
-            class="ml-auto -mx-1.5 -my-1.5 bg-transparent text-secondary hover:text-primary rounded-lg focus:ring-2 focus:ring-slate-400 p-1.5 hover:bg-white/10 inline-flex h-8 w-8 transition-colors">
+            class="ml-auto -mx-1.5 -my-1.5 bg-transparent text-slate-300 hover:text-white rounded-lg focus:ring-2 focus:ring-slate-400 p-1.5 hover:bg-white/10 inline-flex h-8 w-8 transition-colors">
             <span class="sr-only">Close</span>
             <i data-feather="x" class="w-4 h-4"></i>
         </button>

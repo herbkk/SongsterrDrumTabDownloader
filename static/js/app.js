@@ -214,15 +214,16 @@ function switchTab(tabName) {
     if (tabName === 'settings') {
         const container = document.getElementById('global-mapping-container');
         if (container.children.length === 0) {
-            new VisualMapperCompact(container, globalDrumMapping);
+            new VisualMapperCompact(container, window.globalDrumMapping);
         }
         renderThemePicker();
     }
 }
 
-function resetGlobalMapping() {
+async function resetGlobalMapping() {
     if (confirm("Reset all drum mappings to defaults? This will delete all custom overrides including the app theme.")) {
         localStorage.removeItem('songsterr_mapping');
+        localStorage.removeItem('songsterr_global_mapping');
         localStorage.removeItem('songsterr_theme');
         localStorage.removeItem('songsterr_base_theme');
         localStorage.removeItem('style_page_format');
@@ -237,10 +238,14 @@ function resetGlobalMapping() {
         localStorage.removeItem('osmd_margin_left');
         localStorage.removeItem('osmd_margin_right');
 
-        globalDrumMapping = {};
+        window.globalDrumMapping = {};
+        if (window.fetchDefaultsAndMerge) {
+            await window.fetchDefaultsAndMerge();
+        }
+
         const container = document.getElementById('global-mapping-container');
         container.innerHTML = '';
-        new VisualMapperCompact(container, globalDrumMapping);
+        new VisualMapperCompact(container, window.globalDrumMapping);
         setTheme('turquoise-glow');
         setBaseTheme('clean-light');
 
@@ -537,7 +542,7 @@ downloadManager.addEventListener('download-error', (e) => {
 function getDownloadConfig() {
     return {
         format: currentFormat,
-        globalMapping: globalDrumMapping,
+        globalMapping: window.globalDrumMapping,
         stemDirection: document.getElementById('style-stem-direction')?.value || 'up',
         bpm: document.getElementById('bpm-input')?.value ? parseInt(document.getElementById('bpm-input').value, 10) : undefined
     };
