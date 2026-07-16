@@ -18,11 +18,11 @@
 <br />
 
 <div align="center">
-  <img src="docs/assets/desktop_1.png" height="400" alt="Desktop Interface" style="display:inline-block; vertical-align:top; margin: 5px;" />
-  <img src="docs/assets/mobile_1.png" height="400" alt="Mobile Interface" style="display:inline-block; vertical-align:top; margin: 5px;" />
+  <img src="docs/assets/desktop_1.png" height="350" alt="Desktop Interface" style="display:inline-block; vertical-align:top; margin: 5px;" />
+  <img src="docs/assets/mobile_1.png" height="350" alt="Mobile Interface" style="display:inline-block; vertical-align:top; margin: 5px;" />
   <br/>
-  <img src="docs/assets/desktop_2.png" height="400" alt="Desktop Interface" style="display:inline-block; vertical-align:top; margin: 5px;" />
-  <img src="docs/assets/mobile_2.png" height="400" alt="Mobile Interface" style="display:inline-block; vertical-align:top; margin: 5px;" />
+  <img src="docs/assets/desktop_2.png" height="350" alt="Desktop Interface" style="display:inline-block; vertical-align:top; margin: 5px;" />
+  <img src="docs/assets/mobile_2.png" height="350" alt="Mobile Interface" style="display:inline-block; vertical-align:top; margin: 5px;" />
 </div>
 
 <br />
