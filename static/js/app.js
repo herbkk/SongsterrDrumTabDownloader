@@ -534,6 +534,66 @@ downloadManager.addEventListener('requires-track-selection', (e) => {
     showTrackSelectionUI(e.detail.tracks);
 });
 
+function showTrackSelectionUI(tracks) {
+    panels.search.classList.add('hidden');
+    panels.url.classList.add('hidden');
+    panels.result.classList.add('hidden');
+    panels.result.classList.remove('flex');
+    panels.progress.classList.add('hidden');
+    panels.progress.classList.remove('flex');
+    
+    // Hide nav bar cleanly
+    if (window.innerWidth >= 640) {
+        tabs.search.parentElement.classList.add('hidden');
+    } else {
+        Object.values(tabs).forEach(tab => tab.classList.add('pointer-events-none', 'opacity-50'));
+    }
+
+    const panelTrackSelection = document.getElementById('panel-track-selection');
+    if (panelTrackSelection) {
+        panelTrackSelection.classList.remove('hidden');
+        panelTrackSelection.classList.add('flex');
+    }
+
+    const trackList = document.getElementById('track-selection-list');
+    if (trackList) {
+        trackList.innerHTML = '';
+        tracks.forEach(track => {
+            const div = document.createElement('div');
+            div.className = 'p-4 border-b border-base hover:bg-surface-hover cursor-pointer transition-colors flex items-center justify-between group last:border-b-0';
+            div.onclick = () => submitTrackSelection(track.partId);
+            
+            let iconHtml = '<i data-feather="box" class="w-5 h-5 text-secondary group-hover:text-accent transition-colors mr-3"></i>';
+            
+            div.innerHTML = `
+                <div class="flex items-center min-w-0">
+                    ${iconHtml}
+                    <div class="min-w-0">
+                        <div class="text-sm font-medium text-primary group-hover:text-accent transition-colors truncate">${track.name || 'Unnamed Track'}</div>
+                        <div class="text-xs text-secondary truncate">${track.instrument || 'Percussion'} (ID: ${track.partId})</div>
+                    </div>
+                </div>
+                <div class="shrink-0 ml-3">
+                    <div class="w-8 h-8 rounded-full bg-surface-hover group-hover:bg-accent/10 flex items-center justify-center transition-colors border border-base group-hover:border-accent/30">
+                        <i data-feather="chevron-right" class="w-4 h-4 text-secondary group-hover:text-accent"></i>
+                    </div>
+                </div>
+            `;
+            trackList.appendChild(div);
+        });
+    }
+    
+    if (window.feather) window.feather.replace();
+    
+    const cancelBtn = document.getElementById('cancel-track-btn');
+    if (cancelBtn) {
+        cancelBtn.onclick = () => {
+            resetUI();
+            downloadManager.dispatchEvent(new CustomEvent('download-error', { detail: { error: 'Track selection cancelled' } }));
+        };
+    }
+}
+
 downloadManager.addEventListener('download-error', (e) => {
     showError(e.detail.error);
     resetUI();
@@ -977,6 +1037,12 @@ function resetUI() {
 
     panels.mapping.classList.add('hidden');
     panels.mapping.classList.remove('flex');
+
+    const panelTrackSelection = document.getElementById('panel-track-selection');
+    if (panelTrackSelection) {
+        panelTrackSelection.classList.add('hidden');
+        panelTrackSelection.classList.remove('flex');
+    }
 
     panels.progress.classList.add('hidden');
     panels.progress.classList.remove('flex');
