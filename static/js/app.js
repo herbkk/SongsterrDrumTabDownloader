@@ -569,7 +569,7 @@ function showTrackSelectionUI(tracks) {
                 <div class="flex items-center min-w-0">
                     ${iconHtml}
                     <div class="min-w-0">
-                        <div class="text-sm font-medium text-primary group-hover:text-accent transition-colors truncate">${track.name || 'Unnamed Track'}</div>
+                        <div class="text-sm font-medium text-primary group-hover:text-accent transition-colors truncate">${track.title || track.name || 'Unnamed Track'}</div>
                         <div class="text-xs text-secondary truncate">${track.instrument || 'Percussion'} (ID: ${track.partId})</div>
                     </div>
                 </div>
