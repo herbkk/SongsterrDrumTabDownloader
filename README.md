@@ -67,6 +67,13 @@ Select the instrument with the `SONGSTERR_INSTRUMENT` environment variable
 (`guitar` or `drums`), or per request via the `instrument` field on
 `/api/download` and `/api/search`.
 
+**Where the chords come from:** Songsterr only stores chord labels on the tabs
+that carry them, and it tags every track with a type (`guitar_...`, `drums_...`)
+that is more reliable than the instrument number — a lead-sheet arrangement can
+report a bass instrument. The tool follows that type when it picks a track. If
+none of the song's tracks carries chord labels, the download stops with an
+explanation instead of writing an empty chart.
+
 ```bash
 # Run as the guitar chord-chart tool (default)
 python app.py

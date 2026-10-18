@@ -883,6 +883,9 @@ def parse_chord_text(text: str):
     if not text:
         return None
     text = text.strip()
+    # Songsterr writes accidentals with the Unicode symbols ("A♭", "B♭m7",
+    # "D♭/E♭"); the pattern below expects the ASCII "#"/"b" forms.
+    text = text.replace("♭", "b").replace("♯", "#")
     if not text or text.upper().replace(".", "").replace(" ", "") in ("NC", "NOC"):
         return None
 
@@ -990,6 +993,25 @@ def _append_rest(parent: ET.Element, beat: dict) -> None:
         tm = ET.SubElement(note, "time-modification")
         ET.SubElement(tm, "actual-notes").text = str(tuplet_val)
         ET.SubElement(tm, "normal-notes").text = str(normal_notes)
+
+
+def count_chord_symbols(track_data: dict) -> int:
+    """
+    Count the chord labels Songsterr stores for the chart's voice.
+
+    Songsterr only puts a chord label on a beat when the tab has chord
+    annotations, and plenty of guitar tabs are notes only. The caller uses this
+    to refuse to build a chord chart that would come out empty.
+    """
+    total = 0
+    for measure in track_data.get("measures", []):
+        voices = measure.get("voices") or []
+        beats = voices[0].get("beats", []) if voices else []
+        for beat in beats:
+            chord = beat.get("chord")
+            if isinstance(chord, dict) and chord.get("text"):
+                total += 1
+    return total
 
 
 def generate_chord_chart_musicxml(track_data: dict, output_path: str = None,

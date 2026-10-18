@@ -20,6 +20,7 @@ from downloader.scraper import download_track
 from downloader.xml_generator import (
     generate_musicxml,
     generate_chord_chart_musicxml,
+    count_chord_symbols,
     get_unmapped_frets,
     DRUM_MAPPING,
     generate_measure_preview_xml,
@@ -521,7 +522,20 @@ def _proceed_with_generation(task_id: str, track_data: dict, artist: str, title:
         if instrument == "drums":
             generate_musicxml(track_data, xml_path, artist=artist, title=title, custom_mapping=custom_mapping, bpm=bpm, stem_direction=stem_direction)
         else:
-            # Guitar (and future instruments): render a chord chart
+            # Guitar (and future instruments): render a chord chart.
+            # Songsterr only stores chord labels when the tab carries chord
+            # annotations, and plenty of tabs are notes only. Stop with a clear
+            # message instead of writing a chart without a single chord.
+            if not count_chord_symbols(track_data):
+                measure_count = len(track_data.get("measures", []))
+                task["status"] = "error"
+                task["error"] = (
+                    f"This track has no chord symbols on Songsterr "
+                    f"({measure_count} measures of notes only), so there is nothing "
+                    f"to draw on a chord chart. Try another track or another version "
+                    f"of the song."
+                )
+                return
             generate_chord_chart_musicxml(track_data, xml_path, artist=artist, title=title, bpm=bpm or base_tempo)
         
         final_filename = xml_filename

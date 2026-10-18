@@ -14,24 +14,14 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import WebDriverException
 
-from .api import HEADERS, INSTRUMENT_IDS
+from .api import HEADERS, track_is_instrument
 
 logger = logging.getLogger(__name__)
 
 
 def _track_matches(track: dict, instrument: str) -> bool:
     """Return True when a Songsterr track object belongs to ``instrument``."""
-    inst_id = track.get("instrumentId", 0)
-    wanted = INSTRUMENT_IDS.get(instrument, frozenset())
-    if inst_id in wanted:
-        return True
-    # Fallback for tracks whose instrumentId is missing/different: match by name
-    name = (track.get("title") or track.get("name") or "").lower()
-    if instrument == "drums":
-        return "drum" in name or "perc" in name
-    if instrument == "guitar":
-        return "guitar" in name
-    return False
+    return track_is_instrument(track, instrument)
 
 
 def setup_driver() -> webdriver.Chrome:

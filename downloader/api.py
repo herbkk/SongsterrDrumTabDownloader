@@ -27,6 +27,38 @@ INSTRUMENT_IDS = {
     "guitar": GUITAR_INSTRUMENT_IDS,
 }
 
+# Songsterr tags every arrangement with a typed hash ("guitar_Aufu0Z0c",
+# "drums_xnXBaqrX", "bass_...", "vocals_...", "other_..."). That type is more
+# reliable than instrumentId: a chord/lead-sheet arrangement can carry
+# instrumentId 33 (bass) while its hash still says guitar.
+INSTRUMENT_HASH_PREFIX = {
+    "drums": "drums_",
+    "guitar": "guitar_",
+}
+
+
+def track_is_instrument(track: dict, instrument: str) -> bool:
+    """
+    Return True when a Songsterr track object belongs to ``instrument``.
+
+    Trusts Songsterr's typed ``hash`` first, then falls back to
+    ``instrumentId`` (``INSTRUMENT_IDS``) and finally to the track name.
+    """
+    wanted_prefix = INSTRUMENT_HASH_PREFIX.get(instrument)
+    if wanted_prefix and (track.get("hash") or "").startswith(wanted_prefix):
+        return True
+
+    if track.get("instrumentId", 0) in INSTRUMENT_IDS.get(instrument, frozenset()):
+        return True
+
+    # Last resort, for tracks whose instrumentId is missing or unexpected
+    name = (track.get("title") or track.get("name") or "").lower()
+    if instrument == "drums":
+        return "drum" in name or "perc" in name
+    if instrument == "guitar":
+        return "guitar" in name
+    return False
+
 # Be polite — minimum delay between API calls
 API_DELAY_SECONDS = 0.5
 
@@ -135,11 +167,8 @@ def _find_track(tracks: list[dict], instrument: str | None) -> int | None:
     """Return the index of the first track matching the requested instrument."""
     if not instrument:
         return None
-    wanted = INSTRUMENT_IDS.get(instrument, frozenset())
-    if not wanted:
-        return None
     for i, track in enumerate(tracks):
-        if track.get("instrumentId") in wanted:
+        if track_is_instrument(track, instrument):
             return i
     return None
 
