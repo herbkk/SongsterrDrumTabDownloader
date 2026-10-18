@@ -14,9 +14,25 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import WebDriverException
 
-from .api import HEADERS, DRUM_INSTRUMENT_ID
+from .api import HEADERS, INSTRUMENT_IDS
 
 logger = logging.getLogger(__name__)
+
+
+def _track_matches(track: dict, instrument: str) -> bool:
+    """Return True when a Songsterr track object belongs to ``instrument``."""
+    inst_id = track.get("instrumentId", 0)
+    wanted = INSTRUMENT_IDS.get(instrument, frozenset())
+    if inst_id in wanted:
+        return True
+    # Fallback for tracks whose instrumentId is missing/different: match by name
+    name = (track.get("title") or track.get("name") or "").lower()
+    if instrument == "drums":
+        return "drum" in name or "perc" in name
+    if instrument == "guitar":
+        return "guitar" in name
+    return False
+
 
 def setup_driver() -> webdriver.Chrome:
     """Configure headless Chrome with network logging enabled."""
@@ -75,20 +91,24 @@ def extract_metadata(state: dict, page_title: str = "") -> dict | None:
         return None
     try:
         meta = state.get("meta", state)
-        song_id = meta.get("songId") or meta.get("current", {}).get("songId")
-        revision_id = meta.get("revisionId") or meta.get("current", {}).get("revisionId")
-        
-        artist = "Unknown Artist"
-        title = "Unknown Title"
+        current = meta.get("current", {}) if isinstance(meta, dict) else {}
+        song_id = meta.get("songId") or current.get("songId")
+        revision_id = meta.get("revisionId") or current.get("revisionId")
 
-        # Extract from page title: "Enter Sandman Drum Tab by Metallica | Songsterr..."
-        if page_title and " Tab by " in page_title:
+        # Prefer the clean song title/artist from the loaded state; the page
+        # title reflects whichever track is currently shown, so it is only a
+        # fallback.
+        artist = current.get("artist") or "Unknown Artist"
+        title = current.get("title") or "Unknown Title"
+
+        if title in ("", "Unknown Title") and page_title and " Tab by " in page_title:
             title_part, rest = page_title.split(" Tab by ", 1)
             title = title_part.strip()
             artist = rest.split(" | ")[0].strip()
             if title.endswith(" Drum"):
                 title = title[:-5]
-        else:
+
+        if artist in ("", "Unknown Artist"):
             # Fallback from JSON
             artist_data = state.get("artist", {})
             if isinstance(artist_data, dict) and "artists" in artist_data:
@@ -96,9 +116,9 @@ def extract_metadata(state: dict, page_title: str = "") -> dict | None:
                 if artists_map:
                     artist = list(artists_map.values())[0]
 
-        tracks = meta.get("tracks", [])
-        if not tracks and "current" in meta:
-            tracks = meta["current"].get("tracks", [])
+        tracks = current.get("tracks", [])
+        if not tracks:
+            tracks = meta.get("tracks", [])
 
         return {
             "songId": song_id,
@@ -138,10 +158,13 @@ def capture_cdn_urls(driver: webdriver.Chrome) -> list[str]:
     return urls
 
 
-def download_drum_track(song_url: str = None, song_id: int = None,
-                        progress_callback=None) -> dict:
+def download_track(song_url: str = None, song_id: int = None,
+                   instrument: str = "drums", progress_callback=None) -> dict:
     """
-    Main orchestrator: download the drum track JSON for a song using Selenium.
+    Main orchestrator: download a track's JSON for a song using Selenium.
+
+    Args:
+        instrument: "drums" (default) or "guitar" — selects which track to fetch.
     """
     def report(step, pct):
         if progress_callback:
@@ -167,21 +190,20 @@ def download_drum_track(song_url: str = None, song_id: int = None,
         
         artist = "Unknown Artist"
         title = "Unknown Title"
-        drum_track_id = None
+        target_track_id = None
+        matching_tracks = []
         
         if metadata:
             artist = metadata.get("artist", artist)
             title = metadata.get("title", title)
             
-            drum_tracks = []
-            # Find all drum tracks
+            # Find all tracks matching the requested instrument
             for i, track in enumerate(metadata.get("tracks", [])):
-                inst_id = track.get("instrumentId", 0)
-                if inst_id == DRUM_INSTRUMENT_ID or "drum" in track.get("title", "").lower() or "perc" in track.get("title", "").lower():
-                    drum_tracks.append({
+                if _track_matches(track, instrument):
+                    matching_tracks.append({
                         "partId": track.get("partId", i),
-                        "title": track.get("title", f"Drum Track {i}"),
-                        "instrument": track.get("instrument", "Drums")
+                        "title": track.get("title", f"{instrument.title()} Track {i}"),
+                        "instrument": track.get("instrument", instrument.title())
                     })
 
         # Give the browser a little more time to make the CDN requests
@@ -193,36 +215,36 @@ def download_drum_track(song_url: str = None, song_id: int = None,
         if not cdn_urls:
             return {"success": False, "error": "No track data found in network logs. The page may not have loaded correctly."}
             
-        if len(drum_tracks) > 1:
+        if len(matching_tracks) > 1:
             # We need user input to select the track
             return {
                 "success": False,
                 "requires_track_selection": True,
-                "tracks": drum_tracks,
+                "tracks": matching_tracks,
                 "cdn_urls": cdn_urls,
                 "artist": artist,
                 "title": title
             }
-        elif len(drum_tracks) == 1:
-            drum_track_id = drum_tracks[0]["partId"]
+        elif len(matching_tracks) == 1:
+            target_track_id = matching_tracks[0]["partId"]
         else:
             # Try to guess or fallback
-            drum_track_id = 0
+            target_track_id = 0
 
         target_url = None
         
-        if drum_track_id is not None:
-            # Look for the URL ending in /{drum_track_id}.json
-            suffix = f"/{drum_track_id}.json"
+        if target_track_id is not None:
+            # Look for the URL ending in /{track_id}.json
+            suffix = f"/{target_track_id}.json"
             for url in cdn_urls:
                 if url.endswith(suffix):
                     target_url = url
                     break
         
         if not target_url:
-            return {"success": False, "error": f"Drum track (id={drum_track_id}) not found among captured URLs."}
+            return {"success": False, "error": f"{instrument.title()} track (id={target_track_id}) not found among captured URLs."}
             
-        report("Downloading drum track data...", 0.75)
+        report("Downloading track data...", 0.75)
         resp = requests.get(target_url, headers=HEADERS, timeout=15)
         resp.raise_for_status()
         track_data = resp.json()
@@ -241,3 +263,10 @@ def download_drum_track(song_url: str = None, song_id: int = None,
     finally:
         if driver:
             driver.quit()
+
+
+# Backwards-compatible alias (drums was the original, only instrument)
+def download_drum_track(song_url: str = None, song_id: int = None,
+                        progress_callback=None) -> dict:
+    return download_track(song_url=song_url, song_id=song_id,
+                          instrument="drums", progress_callback=progress_callback)

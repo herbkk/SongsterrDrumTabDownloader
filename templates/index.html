@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Songsterr Drum Tab Downloader</title>
+    <title>Songsterr Guitar Chord Downloader</title>
     <link rel="icon" type="image/png" href="/static/img/favicon.png">
 
     <!-- PWA Meta Tags -->
@@ -61,11 +61,11 @@
         <header class="w-full max-w-3xl mb-8 sm:mb-12 text-center mt-4 sm:mt-8">
             <a href="/" class="inline-block hover:opacity-80 transition-opacity">
                 <h1 class="text-3xl min-[400px]:text-4xl font-bold tracking-tight text-primary sm:text-5xl mb-2 sm:mb-3">
-                    Songsterr <span class="text-gradient">Drum Tabs</span>
+                    Songsterr <span class="text-gradient">Guitar Chords</span>
                 </h1>
             </a>
             <p class="text-lg text-secondary max-w-xl mx-auto">
-                Download high-quality drum tablature as print-ready PDF notation.
+                Download guitar chord charts for any Songsterr song.
             </p>
         </header>
 
@@ -153,7 +153,7 @@
                     <div class="flex items-center justify-between">
                         <h3 class="text-lg font-medium text-primary flex items-center">
                             <i data-feather="search" class="w-5 h-5 mr-2 text-accent"></i>
-                            Find a Drum Track
+                            Find a Guitar Track
                         </h3>
                     </div>
                     <div class="relative group">
@@ -266,7 +266,7 @@
                     <button id="btn-download-url" onclick="startDownloadFromUrl()" disabled
                         class="btn-accent w-full flex items-center justify-center py-4 px-6 rounded-xl shadow-sm text-base font-medium focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all">
                         <i data-feather="download" class="w-5 h-5 mr-2"></i>
-                        Download Drum Tab
+                        Download Chord Chart
                     </button>
                 </div>
 
@@ -358,9 +358,9 @@
                     <div class="text-center space-y-2 mb-2">
                         <h3 class="text-lg font-medium text-accent flex items-center justify-center">
                             <i data-feather="list" class="w-5 h-5 mr-2"></i>
-                            Select Drum Track
+                            Select Track
                         </h3>
-                        <p class="text-sm text-secondary">This song contains multiple drum/percussion tracks. Please select which one you'd like to download.</p>
+                        <p class="text-sm text-secondary">This song contains multiple matching tracks. Please select which one you'd like to download.</p>
                     </div>
 
                     <div class="w-full max-w-md bg-surface border border-base rounded-xl overflow-hidden" id="track-selection-list">
@@ -669,8 +669,8 @@
                         </div>
                     </div>
 
-                    <!-- Section: Drum Mapping -->
-                    <div class="settings-section w-full">
+                    <!-- Section: Drum Mapping (only relevant in drums mode) -->
+                    <div class="settings-section w-full hidden">
                         <div class="settings-section-title">
                             <i data-feather="sliders" class="text-accent"></i> Global Drum Mapping
                         </div>

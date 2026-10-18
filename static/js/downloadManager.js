@@ -65,7 +65,7 @@ export class DownloadManager extends EventTarget {
             if (payload.artist && payload.title) {
                 const safeArtist = payload.artist.toLowerCase().replace(/[^a-z0-9]+/g, '-');
                 const safeTitle = payload.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-                this.currentDownloadUrl = `https://www.songsterr.com/a/wsa/${safeArtist}-${safeTitle}-drum-tab-s${payload.songId}`;
+                this.currentDownloadUrl = `https://www.songsterr.com/a/wsa/${safeArtist}-${safeTitle}-tab-s${payload.songId}`;
             } else {
                 this.currentDownloadUrl = `https://www.songsterr.com/a/wsa/song-s${payload.songId}`;
             }

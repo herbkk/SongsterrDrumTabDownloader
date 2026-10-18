@@ -1,7 +1,7 @@
 {
-  "name": "Songsterr Drum Tab Downloader",
-  "short_name": "Drum Tabs",
-  "description": "Download high-quality drum tablature as print-ready PDF notation.",
+  "name": "Songsterr Guitar Chord Downloader",
+  "short_name": "Guitar Chords",
+  "description": "Download guitar chord charts for any Songsterr song.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#020617",

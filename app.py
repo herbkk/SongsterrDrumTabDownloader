@@ -1,8 +1,10 @@
 """
-Songsterr Drum Tab Downloader — Flask Web Server
+Songsterr Tab Downloader — Flask Web Server
 
-Provides a web UI for searching Songsterr songs, downloading drum tracks,
-and rendering them as traditional notation PDFs.
+Provides a web UI for searching Songsterr songs and downloading a track as
+MusicXML. The default instrument for this build is guitar, which is rendered
+as a chord chart; setting SONGSTERR_INSTRUMENT=drums restores the original
+drum-tablature behaviour.
 """
 
 import os
@@ -14,14 +16,29 @@ import threading
 from flask import Flask, render_template, request, jsonify, send_from_directory, Response
 
 from downloader.api import search_songs
-from downloader.scraper import download_drum_track
-from downloader.xml_generator import generate_musicxml, get_unmapped_frets, DRUM_MAPPING, generate_measure_preview_xml, calculate_playback_map, calculate_swing_map
+from downloader.scraper import download_track
+from downloader.xml_generator import (
+    generate_musicxml,
+    generate_chord_chart_musicxml,
+    get_unmapped_frets,
+    DRUM_MAPPING,
+    generate_measure_preview_xml,
+    calculate_playback_map,
+    calculate_swing_map,
+)
 
 # ─── Configuration ──────────────────────────────────────────────────────────────
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DOWNLOADS_DIR = os.path.join(BASE_DIR, "downloads")
 os.makedirs(DOWNLOADS_DIR, exist_ok=True)
+
+# Default instrument for this build. Set to "guitar" for the chord-chart variant;
+# "drums" restores the original behaviour. Can be overridden per request.
+DEFAULT_INSTRUMENT = os.environ.get("SONGSTERR_INSTRUMENT", "guitar")
+
+# Human-readable label + filename suffix per instrument
+INSTRUMENT_LABELS = {"drums": "Drums", "guitar": "Chords"}
 
 logging.basicConfig(
     level=logging.INFO,
@@ -86,17 +103,22 @@ def api_search():
     Search Songsterr for songs.
     Query params:
         q: search query string
-        drums_only: if 'true', filter to songs with drum tracks (default: true)
+        instrument: "drums" or "guitar" (default: the build default)
+        drums_only: deprecated; if set, overrides instrument
     """
     query = request.args.get("q", "").strip()
     if not query:
         return jsonify({"error": "Search query is required", "results": []}), 400
 
-    drums_only = request.args.get("drums_only", "true").lower() == "true"
+    instrument = request.args.get("instrument", DEFAULT_INSTRUMENT)
+    drums_only = request.args.get("drums_only")
 
     try:
-        results = search_songs(query, size=20, drums_only=drums_only)
-        return jsonify({"results": results})
+        results = search_songs(
+            query, size=20, instrument=instrument,
+            drums_only=None if drums_only is None else drums_only.lower() == "true",
+        )
+        return jsonify({"results": results, "instrument": instrument})
     except Exception as e:
         logger.error(f"Search failed: {e}")
         return jsonify({"error": str(e), "results": []}), 500
@@ -147,10 +169,11 @@ def api_cover_art():
 @app.route("/api/download", methods=["POST"])
 def api_download():
     """
-    Start a drum tab download + PDF render task.
+    Start a track download + MusicXML generation task.
     JSON body:
         url: Songsterr song URL (optional if songId provided)
         songId: Songsterr song ID (optional if url provided)
+        instrument: "drums" or "guitar" (optional, defaults to build default)
     """
     data = request.get_json(force=True, silent=True) or {}
     song_url = data.get("url", "").strip()
@@ -161,6 +184,7 @@ def api_download():
     global_mapping = data.get("global_mapping", {})
     bpm = data.get("bpm", None)
     stem_direction = data.get("stem_direction", "up")
+    instrument = data.get("instrument", DEFAULT_INSTRUMENT)
 
     if not song_url and not song_id:
         return jsonify({"error": "Either 'url' or 'songId' is required"}), 400
@@ -174,12 +198,13 @@ def api_download():
         "result": None,
         "error": None,
         "song_url": song_url, # store for later
+        "instrument": instrument,
     }
 
     # Run download in background thread
     thread = threading.Thread(
         target=_run_download_task,
-        args=(task_id, song_url, song_id, output_format, global_mapping, bpm, stem_direction),
+        args=(task_id, song_url, song_id, output_format, global_mapping, bpm, stem_direction, instrument),
         daemon=True
     )
     thread.start()
@@ -311,22 +336,25 @@ def serve_download(filename):
 
 # ─── Background Task ───────────────────────────────────────────────────────────
 
-def _run_download_task(task_id: str, song_url: str, song_id: int, output_format: str, global_mapping: dict = None, bpm: int = None, stem_direction: str = "up"):
+def _run_download_task(task_id: str, song_url: str, song_id: int, output_format: str, global_mapping: dict = None, bpm: int = None, stem_direction: str = "up", instrument: str = None):
     """
-    Background task: download drum track + generate MusicXML (+ convert to PDF).
+    Background task: download the requested track + generate MusicXML.
     """
     task = tasks[task_id]
     task["status"] = "running"
+    instrument = instrument or task.get("instrument") or DEFAULT_INSTRUMENT
+    task["instrument"] = instrument
 
     def progress_callback(step, pct):
         task["step"] = step
         task["progress"] = pct
 
     try:
-        # Step 1: Download the drum track JSON
-        result = download_drum_track(
+        # Step 1: Download the track JSON
+        result = download_track(
             song_url=song_url or None,
             song_id=song_id,
+            instrument=instrument,
             progress_callback=progress_callback,
         )
 
@@ -349,28 +377,29 @@ def _run_download_task(task_id: str, song_url: str, song_id: int, output_format:
         track_data = result["data"]
         artist = result["artist"]
         title = result["title"]
-        
-        # Check for unmapped frets using both default and global mapping
-        unmapped = get_unmapped_frets(track_data, custom_mapping=global_mapping)
-        if unmapped:
-            for u in unmapped:
-                preview_xml = generate_measure_preview_xml(track_data, u["first_measure"], highlight_fret=u["fret"])
-                u["preview_xml"] = preview_xml
 
-            task["status"] = "requires_mapping"
-            task["unmapped_frets"] = unmapped
-            task["track_data"] = track_data
-            task["artist"] = artist
-            task["title"] = title
-            task["output_format"] = output_format
-            task["global_mapping"] = global_mapping
-            task["bpm"] = bpm
-            task["stem_direction"] = stem_direction
-            task["song_url"] = song_url
-            return
+        # The drum mapping flow only applies to drum tracks
+        if instrument == "drums":
+            unmapped = get_unmapped_frets(track_data, custom_mapping=global_mapping)
+            if unmapped:
+                for u in unmapped:
+                    preview_xml = generate_measure_preview_xml(track_data, u["first_measure"], highlight_fret=u["fret"])
+                    u["preview_xml"] = preview_xml
 
-        # No unmapped frets, proceed directly to generation
-        _proceed_with_generation(task_id, track_data, artist, title, output_format, custom_mapping=global_mapping, bpm=bpm, stem_direction=stem_direction)
+                task["status"] = "requires_mapping"
+                task["unmapped_frets"] = unmapped
+                task["track_data"] = track_data
+                task["artist"] = artist
+                task["title"] = title
+                task["output_format"] = output_format
+                task["global_mapping"] = global_mapping
+                task["bpm"] = bpm
+                task["stem_direction"] = stem_direction
+                task["song_url"] = song_url
+                return
+
+        # No unmapped frets (or not a drum track), proceed directly to generation
+        _proceed_with_generation(task_id, track_data, artist, title, output_format, custom_mapping=global_mapping, bpm=bpm, stem_direction=stem_direction, instrument=instrument)
 
     except Exception as e:
         logger.exception(f"Task {task_id} failed")
@@ -382,24 +411,25 @@ def _run_download_task_resume_track(task_id: str):
     """Resume download after track selection."""
     task = tasks[task_id]
     task["status"] = "running"
-    
+    instrument = task.get("instrument", DEFAULT_INSTRUMENT)
+
     def progress_callback(step, pct):
         task["step"] = step
         task["progress"] = pct
 
     try:
-        drum_track_id = task["selected_part_id"]
+        selected_track_id = task["selected_part_id"]
         cdn_urls = task["cdn_urls"]
         target_url = None
         
-        suffix = f"/{drum_track_id}.json"
+        suffix = f"/{selected_track_id}.json"
         for url in cdn_urls:
             if url.endswith(suffix):
                 target_url = url
                 break
                 
         if not target_url:
-            raise ValueError(f"Drum track (id={drum_track_id}) not found among captured URLs.")
+            raise ValueError(f"{instrument.title()} track (id={selected_track_id}) not found among captured URLs.")
             
         progress_callback("Downloading selected track...", 0.75)
         import requests
@@ -413,21 +443,21 @@ def _run_download_task_resume_track(task_id: str):
         output_format = task.get("output_format", "musicxml")
         bpm = task.get("bpm")
         stem_direction = task.get("stem_direction", "up")
-        
-        # Check for unmapped frets
-        unmapped = get_unmapped_frets(track_data, custom_mapping=global_mapping)
-        if unmapped:
-            for u in unmapped:
-                preview_xml = generate_measure_preview_xml(track_data, u["first_measure"], highlight_fret=u["fret"])
-                u["preview_xml"] = preview_xml
 
-            task["status"] = "requires_mapping"
-            task["unmapped_frets"] = unmapped
-            task["track_data"] = track_data
-            return
+        # The drum mapping flow only applies to drum tracks
+        if instrument == "drums":
+            unmapped = get_unmapped_frets(track_data, custom_mapping=global_mapping)
+            if unmapped:
+                for u in unmapped:
+                    preview_xml = generate_measure_preview_xml(track_data, u["first_measure"], highlight_fret=u["fret"])
+                    u["preview_xml"] = preview_xml
 
-        # No unmapped frets, proceed directly to generation
-        _proceed_with_generation(task_id, track_data, artist, title, output_format, custom_mapping=global_mapping, bpm=bpm)
+                task["status"] = "requires_mapping"
+                task["unmapped_frets"] = unmapped
+                task["track_data"] = track_data
+                return
+
+        _proceed_with_generation(task_id, track_data, artist, title, output_format, custom_mapping=global_mapping, bpm=bpm, stem_direction=stem_direction, instrument=instrument)
 
     except Exception as e:
         logger.exception(f"Task {task_id} resume track failed")
@@ -450,16 +480,19 @@ def _run_download_task_resume(task_id: str):
         final_mapping.update(task.get("custom_mapping", {}))
         bpm = task.get("bpm", None)
         stem_direction = task.get("stem_direction", "up")
+        instrument = task.get("instrument", DEFAULT_INSTRUMENT)
         
-        _proceed_with_generation(task_id, track_data, artist, title, output_format, custom_mapping=final_mapping, bpm=bpm, stem_direction=stem_direction)
+        _proceed_with_generation(task_id, track_data, artist, title, output_format, custom_mapping=final_mapping, bpm=bpm, stem_direction=stem_direction, instrument=instrument)
     except Exception as e:
         logger.exception(f"Task {task_id} failed during resume")
         task["status"] = "error"
         task["error"] = str(e)
 
 
-def _proceed_with_generation(task_id: str, track_data: dict, artist: str, title: str, output_format: str, custom_mapping: dict = None, bpm: int = None, stem_direction: str = "up"):
+def _proceed_with_generation(task_id: str, track_data: dict, artist: str, title: str, output_format: str, custom_mapping: dict = None, bpm: int = None, stem_direction: str = "up", instrument: str = None):
     task = tasks[task_id]
+    instrument = instrument or task.get("instrument") or DEFAULT_INSTRUMENT
+    task["instrument"] = instrument
     
     def progress_callback(step, pct):
         task["step"] = step
@@ -472,12 +505,24 @@ def _proceed_with_generation(task_id: str, track_data: dict, artist: str, title:
         # Build a clean filename
         safe_artist = "".join(c for c in artist if c.isalnum() or c in " -_").strip()
         safe_title = "".join(c for c in title if c.isalnum() or c in " -_").strip()
-        base_filename = f"{safe_artist} - {safe_title} (Drums)"
+        base_filename = f"{safe_artist} - {safe_title} ({INSTRUMENT_LABELS.get(instrument, instrument.title())})"
         
         xml_filename = f"{base_filename}.musicxml"
         xml_path = os.path.join(DOWNLOADS_DIR, xml_filename)
 
-        generate_musicxml(track_data, xml_path, artist=artist, title=title, custom_mapping=custom_mapping, bpm=bpm, stem_direction=stem_direction)
+        # Determine the song tempo (used for the score and for the frontend player)
+        base_tempo = 120
+        automations = track_data.get("automations", {})
+        tempo_list = automations.get("tempo", [])
+        if tempo_list and len(tempo_list) > 0:
+            first_tempo = tempo_list[0]
+            base_tempo = first_tempo.get("bpm", 120) if isinstance(first_tempo, dict) else int(first_tempo)
+
+        if instrument == "drums":
+            generate_musicxml(track_data, xml_path, artist=artist, title=title, custom_mapping=custom_mapping, bpm=bpm, stem_direction=stem_direction)
+        else:
+            # Guitar (and future instruments): render a chord chart
+            generate_chord_chart_musicxml(track_data, xml_path, artist=artist, title=title, bpm=bpm or base_tempo)
         
         final_filename = xml_filename
         
@@ -488,13 +533,6 @@ def _proceed_with_generation(task_id: str, track_data: dict, artist: str, title:
         playback_map = calculate_playback_map(track_data.get("measures", []))
         swing_map = calculate_swing_map(track_data.get("measures", []))
         
-        base_tempo = 120
-        automations = track_data.get("automations", {})
-        tempo_list = automations.get("tempo", [])
-        if tempo_list and len(tempo_list) > 0:
-            first_tempo = tempo_list[0]
-            base_tempo = first_tempo.get("bpm", 120) if isinstance(first_tempo, dict) else int(first_tempo)
-
         progress_callback("Done!", 1.0)
 
         task["status"] = "done"
@@ -503,6 +541,7 @@ def _proceed_with_generation(task_id: str, track_data: dict, artist: str, title:
             "downloadUrl": f"/downloads/{final_filename}",
             "artist": artist,
             "title": title,
+            "instrument": instrument,
             "xml_string": xml_string,
             "playback_map": playback_map,
             "swing_map": swing_map,
@@ -518,7 +557,7 @@ def _proceed_with_generation(task_id: str, track_data: dict, artist: str, title:
 # ─── Entry Point ────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    print("\n  🥁 Songsterr Drum Tab Downloader")
+    print(f"\n  🎸 Songsterr Tab Downloader ({DEFAULT_INSTRUMENT})")
     
     cert_path = os.path.join(BASE_DIR, 'certs', 'cert.pem')
     key_path = os.path.join(BASE_DIR, 'certs', 'key.pem')

@@ -6,6 +6,7 @@ Translates Songsterr JSON into MusicXML 4.0 format.
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 import os
+import re
 import logging
 import copy
 
@@ -845,3 +846,235 @@ def calculate_swing_map(measures: list[dict]) -> dict:
             swing_map[i] = current_swing
             
     return swing_map
+
+
+# ─── Guitar chord chart ─────────────────────────────────────────────────────────
+#
+# Songsterr stores a chord *label* on each beat (beat["chord"]["text"], e.g. "Am",
+# "Dsus4", "C/G") — not a fingering diagram. For the guitar variant we render the
+# song as a chord chart: one treble staff carrying whole-measure rests, with the
+# chord symbols placed above the staff at the beat where they are played.
+
+_CHORD_KINDS = [
+    # (prefix test, MusicXML <kind>)
+    ("maj7", "major-seventh"), ("maj", "major"),
+    ("M7", "major-seventh"), ("M", "major"),
+    ("m7b5", "half-diminished"), ("m7-5", "half-diminished"), ("m7", "minor-seventh"),
+    ("m6", "minor-sixth"), ("m9", "minor-ninth"), ("m11", "minor-11th"),
+    ("min7", "minor-seventh"), ("min", "minor"),
+    ("m", "minor"),
+    ("sus2", "suspended-second"), ("sus4", "suspended-fourth"), ("sus", "suspended-fourth"),
+    ("dim", "diminished"), ("aug", "augmented"),
+    ("add", "major"),
+    ("6", "major-sixth"), ("9", "dominant-ninth"), ("11", "dominant-11th"),
+    ("13", "dominant-13th"), ("7", "dominant"),
+    ("5", "power"),
+]
+
+
+def parse_chord_text(text: str):
+    """
+    Parse a Songsterr chord label into its parts.
+
+    Returns a dict {root, root_alter, kind, bass, bass_alter} or None when the
+    label is not a chord we can turn into a MusicXML <harmony> (the caller then
+    falls back to plain text).
+    """
+    if not text:
+        return None
+    text = text.strip()
+    if not text or text.upper().replace(".", "").replace(" ", "") in ("NC", "NOC"):
+        return None
+
+    m = re.match(r"^([A-G])([#b]?)(.*)$", text)
+    if not m:
+        return None
+
+    root, root_alter, rest = m.group(1), m.group(2), m.group(3)
+
+    # Slash chord: bass note after "/"
+    bass, bass_alter = None, None
+    if "/" in rest:
+        rest, bass_part = rest.split("/", 1)
+        bm = re.match(r"^([A-G])([#b]?)", bass_part)
+        if bm:
+            bass, bass_alter = bm.group(1), bm.group(2)
+        else:
+            return None
+
+    # Find the first quality whose prefix matches
+    kind = None
+    for prefix, k in _CHORD_KINDS:
+        if rest.startswith(prefix):
+            kind = k
+            break
+    if kind is None and rest == "":
+        kind = "major"
+    if kind is None:
+        return None
+
+    return {
+        "root": root,
+        "root_alter": root_alter,
+        "kind": kind,
+        "bass": bass,
+        "bass_alter": bass_alter,
+    }
+
+
+def _key_signature(value):
+    """
+    Songsterr stores the key signature as a dict
+    ({'accidentalCount': n, 'mode': 'major'|'minor', ...}), occasionally as a
+    plain int. Return (fifths, mode) for MusicXML.
+    """
+    if isinstance(value, dict):
+        return int(value.get("accidentalCount", 0)), value.get("mode")
+    if isinstance(value, int):
+        return value, None
+    return 0, None
+
+
+def _append_harmony(parent: ET.Element, chord_text: str, offset_ticks: int = 0) -> bool:
+    """
+    Append either a proper <harmony> (when the label parses) or a <words> text
+    direction. Returns True when a <harmony> was emitted.
+    """
+    parsed = parse_chord_text(chord_text)
+
+    if parsed:
+        harmony = ET.SubElement(parent, "harmony")
+        root_e = ET.SubElement(harmony, "root")
+        ET.SubElement(root_e, "root-step").text = parsed["root"]
+        if parsed["root_alter"]:
+            ET.SubElement(root_e, "root-alter").text = "-1" if parsed["root_alter"] == "b" else "1"
+        ET.SubElement(harmony, "kind").text = parsed["kind"]
+        if parsed["bass"]:
+            bass_e = ET.SubElement(harmony, "bass")
+            ET.SubElement(bass_e, "bass-step").text = parsed["bass"]
+            if parsed["bass_alter"]:
+                ET.SubElement(bass_e, "bass-alter").text = "-1" if parsed["bass_alter"] == "b" else "1"
+        if offset_ticks:
+            ET.SubElement(harmony, "offset").text = str(offset_ticks)
+        return True
+
+    # Fallback: render the raw label as text above the staff
+    direction = ET.SubElement(parent, "direction", placement="above")
+    d_type = ET.SubElement(direction, "direction-type")
+    ET.SubElement(d_type, "words", {"default-y": "20", "font-weight": "bold"}).text = chord_text
+    if offset_ticks:
+        ET.SubElement(direction, "offset").text = str(offset_ticks)
+    return False
+
+
+def _append_rest(parent: ET.Element, beat: dict) -> None:
+    """
+    Append a rest note that matches the beat's duration, so the measure keeps
+    its rhythmic width even though we are only drawing chord symbols.
+    """
+    dur_array = beat.get("duration", [1, 4])
+    tuplet_val = beat.get("tuplet")
+    ticks = duration_to_ticks(dur_array)
+    note_type, dots = get_note_type_info(dur_array, tuplet_val)
+
+    note = ET.SubElement(parent, "note")
+    ET.SubElement(note, "rest")
+    ET.SubElement(note, "duration").text = str(ticks)
+    ET.SubElement(note, "voice").text = "1"
+    ET.SubElement(note, "type").text = note_type
+    for _ in range(dots):
+        ET.SubElement(note, "dot")
+
+    if tuplet_val:
+        normal_notes = 2 if tuplet_val not in (5, 6, 7) else 4
+        tm = ET.SubElement(note, "time-modification")
+        ET.SubElement(tm, "actual-notes").text = str(tuplet_val)
+        ET.SubElement(tm, "normal-notes").text = str(normal_notes)
+
+
+def generate_chord_chart_musicxml(track_data: dict, output_path: str = None,
+                                  artist: str = "Unknown", title: str = "Unknown",
+                                  bpm: int = None) -> str:
+    """
+    Build a MusicXML chord chart for a guitar track.
+
+    Every measure becomes a whole-measure rest, with the song's chord labels
+    placed above the staff at the beat where they occur. The result renders in
+    OpenSheetMusicDisplay (and any notation app) as a lead-sheet style chart.
+    """
+    measures = track_data.get("measures", [])
+    part_name = track_data.get("name", "Guitar")
+
+    root = ET.Element("score-partwise", version="4.0")
+
+    work = ET.SubElement(root, "work")
+    ET.SubElement(work, "work-title").text = title
+
+    ident = ET.SubElement(root, "identification")
+    ET.SubElement(ident, "creator", type="composer").text = artist
+
+    part_list = ET.SubElement(root, "part-list")
+    score_part = ET.SubElement(part_list, "score-part", id="P1")
+    ET.SubElement(score_part, "part-name").text = part_name
+
+    part = ET.SubElement(root, "part", id="P1")
+
+    current_sig = None
+    for mi, measure_data in enumerate(measures):
+        m_elem = ET.SubElement(part, "measure", number=str(get_songsterr_measure_number(measures, mi)))
+
+        sig = measure_data.get("signature", current_sig or [4, 4])
+        ticks_per_quarter = DIVISIONS
+        measure_ticks = int(sig[0] / sig[1] * 4 * ticks_per_quarter)
+
+        # Attributes on the first measure and whenever the time signature changes
+        if mi == 0 or sig != current_sig:
+            attributes = ET.SubElement(m_elem, "attributes")
+            ET.SubElement(attributes, "divisions").text = str(DIVISIONS)
+            key = ET.SubElement(attributes, "key")
+            fifths, mode = _key_signature(measure_data.get("keySignature"))
+            ET.SubElement(key, "fifths").text = str(fifths)
+            if mode:
+                ET.SubElement(key, "mode").text = mode
+            time_e = ET.SubElement(attributes, "time")
+            ET.SubElement(time_e, "beats").text = str(sig[0])
+            ET.SubElement(time_e, "beat-type").text = str(sig[1])
+            clef = ET.SubElement(attributes, "clef")
+            ET.SubElement(clef, "sign").text = "G"
+            ET.SubElement(clef, "line").text = "2"
+            if mi == 0 and bpm:
+                direction = ET.SubElement(m_elem, "direction", placement="above")
+                d_type = ET.SubElement(direction, "direction-type")
+                metronome = ET.SubElement(d_type, "metronome")
+                ET.SubElement(metronome, "beat-unit").text = "quarter"
+                ET.SubElement(metronome, "per-minute").text = str(bpm)
+                ET.SubElement(direction, "sound", tempo=str(bpm))
+            current_sig = sig
+
+        # Walk the beats of the first voice. Each beat becomes a rest (so the
+        # measure keeps its rhythmic width) with the chord symbol written in
+        # front of it — the usual lead-sheet layout.
+        voices = measure_data.get("voices", [])
+        beats = voices[0].get("beats", []) if voices else []
+
+        if beats:
+            for beat in beats:
+                chord = beat.get("chord")
+                if isinstance(chord, dict) and chord.get("text"):
+                    _append_harmony(m_elem, chord["text"])
+                _append_rest(m_elem, beat)
+        else:
+            # Empty measure: a whole-measure rest keeps the bar structurally valid
+            note = ET.SubElement(m_elem, "note")
+            ET.SubElement(note, "rest", measure="yes")
+            ET.SubElement(note, "duration").text = str(measure_ticks)
+            ET.SubElement(note, "voice").text = "1"
+
+    xml_str = minidom.parseString(ET.tostring(root, encoding="unicode")).toprettyxml(indent="  ")
+
+    if output_path is not None:
+        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(xml_str)
+
+    return xml_str

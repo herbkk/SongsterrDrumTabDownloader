@@ -16,6 +16,17 @@ REVISIONS_URL = f"{BASE_URL}/api/meta"
 # Drum instrument ID used by Songsterr
 DRUM_INSTRUMENT_ID = 1024
 
+# General MIDI guitar programs used by Songsterr
+# (24 = nylon, 25 = steel, 26/27 = electric, 28 = muted, 29 = overdriven,
+#  30 = distortion, 31 = harmonics)
+GUITAR_INSTRUMENT_IDS = frozenset(range(24, 32))
+
+# Supported instruments: name -> set of Songsterr instrumentIds to match
+INSTRUMENT_IDS = {
+    "drums": frozenset({DRUM_INSTRUMENT_ID}),
+    "guitar": GUITAR_INSTRUMENT_IDS,
+}
+
 # Be polite — minimum delay between API calls
 API_DELAY_SECONDS = 0.5
 
@@ -29,19 +40,28 @@ HEADERS = {
 }
 
 
-def search_songs(query: str, size: int = 20, drums_only: bool = True) -> list[dict]:
+def search_songs(query: str, size: int = 20, instrument: str = "drums",
+                 drums_only: bool | None = None) -> list[dict]:
     """
     Search Songsterr for songs matching the query.
 
     Args:
         query: Search string (artist name, song title, or both)
         size: Maximum number of results to return
-        drums_only: If True, filter results to only include songs with drum tracks
+        instrument: Which instrument to filter on ("drums" or "guitar").
+            If falsy, no filtering is applied and every song is returned.
+        drums_only: Deprecated. Kept for backwards compatibility; when set,
+            overrides ``instrument`` (True -> "drums", False -> no filter).
 
     Returns:
-        List of song dicts with keys:
-            songId, artist, title, tracks, hasDrums, drumTrackIndex, drumTrackName, drumDifficulty
+        List of song dicts. In addition to the drum-specific keys
+        (hasDrums, drumTrackIndex, drumTrackName, drumDifficulty) every song
+        now carries the requested instrument under the generic keys
+        hasTrack, trackIndex, trackName, trackDifficulty.
     """
+    if drums_only is not None:
+        instrument = "drums" if drums_only else None
+
     params = {"pattern": query, "size": size}
 
     try:
@@ -60,8 +80,8 @@ def search_songs(query: str, size: int = 20, drums_only: bool = True) -> list[di
 
     results = []
     for record in records:
-        song = _parse_song_record(record)
-        if drums_only and not song["hasDrums"]:
+        song = _parse_song_record(record, instrument)
+        if instrument and not song["hasTrack"]:
             continue
         results.append(song)
 
@@ -111,34 +131,60 @@ def get_active_revision_id(song_id: int) -> int | None:
     return None
 
 
-def _parse_song_record(record: dict) -> dict:
+def _find_track(tracks: list[dict], instrument: str | None) -> int | None:
+    """Return the index of the first track matching the requested instrument."""
+    if not instrument:
+        return None
+    wanted = INSTRUMENT_IDS.get(instrument, frozenset())
+    if not wanted:
+        return None
+    for i, track in enumerate(tracks):
+        if track.get("instrumentId") in wanted:
+            return i
+    return None
+
+
+def _parse_song_record(record: dict, instrument: str | None = "drums") -> dict:
     """
     Parse a raw Songsterr search result into a clean song dict.
+
+    Both drums and guitar are detected; ``instrument`` only selects which one
+    is exposed through the generic hasTrack/trackIndex/... keys.
     """
     tracks = record.get("tracks", [])
 
     # Find drum track(s)
-    drum_track_index = None
+    drum_track_index = _find_track(tracks, "drums")
+    has_drums = drum_track_index is not None
     drum_track_name = ""
     drum_difficulty = 0
-    has_drums = False
-
-    for i, track in enumerate(tracks):
-        if track.get("instrumentId") == DRUM_INSTRUMENT_ID:
-            has_drums = True
-            drum_track_index = i
-            drum_track_name = track.get("name", "Drums")
-            drum_difficulty = track.get("difficulty", 0)
-            break
+    if has_drums:
+        drum_track_name = tracks[drum_track_index].get("name", "Drums")
+        drum_difficulty = tracks[drum_track_index].get("difficulty", 0)
 
     # Also check the popularTrackDrum field
-    if not has_drums and "popularTrackDrum" in record:
+    if not has_drums and record.get("popularTrackDrum") is not None:
         pop_idx = record["popularTrackDrum"]
-        if pop_idx is not None and 0 <= pop_idx < len(tracks):
+        if 0 <= pop_idx < len(tracks):
             has_drums = True
             drum_track_index = pop_idx
             drum_track_name = tracks[pop_idx].get("name", "Drums")
             drum_difficulty = tracks[pop_idx].get("difficulty", 0)
+
+    # Find guitar track(s)
+    guitar_track_index = _find_track(tracks, "guitar")
+    has_guitar = guitar_track_index is not None
+    guitar_track_name = ""
+    guitar_difficulty = 0
+    if has_guitar:
+        guitar_track_name = tracks[guitar_track_index].get("name", "Guitar")
+        guitar_difficulty = tracks[guitar_track_index].get("difficulty", 0)
+
+    # Requested track (generic keys used by the UI)
+    if instrument == "guitar":
+        track_index, track_name, track_difficulty = guitar_track_index, guitar_track_name, guitar_difficulty
+    else:
+        track_index, track_name, track_difficulty = drum_track_index, drum_track_name, drum_difficulty
 
     return {
         "songId": record.get("songId"),
@@ -159,4 +205,14 @@ def _parse_song_record(record: dict) -> dict:
         "drumTrackIndex": drum_track_index,
         "drumTrackName": drum_track_name,
         "drumDifficulty": drum_difficulty,
+        "hasGuitar": has_guitar,
+        "guitarTrackIndex": guitar_track_index,
+        "guitarTrackName": guitar_track_name,
+        "guitarDifficulty": guitar_difficulty,
+        # Generic keys for whichever instrument was requested
+        "instrument": instrument,
+        "hasTrack": track_index is not None,
+        "trackIndex": track_index,
+        "trackName": track_name,
+        "trackDifficulty": track_difficulty,
     }

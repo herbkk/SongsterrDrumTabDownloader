@@ -1,15 +1,16 @@
 <div align="center">
-  <img src="static/img/icon-512.png" alt="Songsterr Drum Tab Downloader Logo" width="120" />
+  <img src="static/img/icon-512.png" alt="Songsterr Guitar Chord Downloader Logo" width="120" />
   
-  # Songsterr Drum Tab Downloader
+  # Songsterr Guitar Chord Downloader
   
   <p>
-    <strong>A user-friendly tool for extracting, rendering, and downloading drum tablature from Songsterr.</strong>
+    <strong>A user-friendly tool for extracting, rendering, and downloading drum tablature <em>and guitar chord charts</em> from Songsterr.</strong>
   </p>
   
   <p>
     <a href="#why-i-built-this">Motivation</a> •
     <a href="#features">Features</a> •
+    <a href="#instruments">Instruments</a> •
     <a href="#getting-started">Getting Started</a> •
     <a href="#legal-notice">Legal Notice</a>
   </p>
@@ -26,6 +27,9 @@
 </div>
 
 <br />
+
+> **Note:** This is a fork of [Ryoshoru/SongsterrDrumTabDownloader](https://github.com/Ryoshoru/SongsterrDrumTabDownloader)
+> that adds **guitar chord charts**. Drums remain fully supported.
 
 ## Why I Built This
 
@@ -49,6 +53,27 @@ I built this tool to bridge that gap. It lets you download the drum tracks direc
 - **Local Library History**: Automatically tracks and caches your download history in the browser for instant one-click access.
 - **Batch Processing**: Paste a list of URLs to sequentially download multiple tabs automatically.
 - **BPM Override**: Set a custom tempo for playback and notation directly from the settings panel.
+
+## Instruments
+
+The tool can fetch two kinds of track from a song:
+
+| Instrument | What you get | Notes |
+|------------|--------------|-------|
+| `guitar` (default in this fork) | A **chord chart**: chord symbols placed above a single staff, one chord per beat where it is played | Songsterr stores a chord *label* per beat (e.g. `Am`, `Dsus4`, `C/G`); this mode turns those into MusicXML `<harmony>` chord symbols. |
+| `drums` | Traditional drum tablature, exactly as in the original project | Includes the interactive drum-mapping flow. |
+
+Select the instrument with the `SONGSTERR_INSTRUMENT` environment variable
+(`guitar` or `drums`), or per request via the `instrument` field on
+`/api/download` and `/api/search`.
+
+```bash
+# Run as the guitar chord-chart tool (default)
+python app.py
+
+# Run as the original drum tab tool
+SONGSTERR_INSTRUMENT=drums python app.py
+```
 
 ## Getting Started
 

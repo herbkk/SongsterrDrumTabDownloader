@@ -327,7 +327,7 @@ function renderSearchResults(results) {
                 <div class="empty-state-icon flex items-center justify-center">
                     <i data-feather="music" class="w-5 h-5"></i>
                 </div>
-                <p class="empty-state-text">No drum tracks found for this query.</p>
+                <p class="empty-state-text">No tracks found for this query.</p>
             </div>
         `;
         feather.replace();
@@ -337,7 +337,7 @@ function renderSearchResults(results) {
     let html = '';
     results.forEach(song => {
         // Difficulty rendering (1-3 stars)
-        const diff = song.drumDifficulty || 1;
+        const diff = song.trackDifficulty ?? song.drumDifficulty ?? 1;
         let diffHtml = '';
         for (let i = 0; i < 3; i++) {
             if (i < diff) diffHtml += `<i data-feather="star" class="w-3 h-3 star-filled inline"></i>`;
@@ -353,7 +353,7 @@ function renderSearchResults(results) {
                 </div>
                 <div class="flex flex-col items-end flex-shrink-0">
                     <div class="bg-surface px-2 py-1 rounded text-xs text-secondary font-medium mb-1 border border-subtle">
-                        <i data-feather="box" class="w-3 h-3 inline mr-1 text-accent"></i>Drums
+                        <i data-feather="box" class="w-3 h-3 inline mr-1 text-accent"></i>${song.instrument === 'drums' ? 'Drums' : 'Guitar'}
                     </div>
                     <div class="text-xs" data-tooltip="Difficulty">
                         ${diffHtml}
@@ -953,14 +953,14 @@ async function exportOSMDPDF() {
 
         const titleEl = document.getElementById('result-song-name');
         const artist = titleEl.dataset.artist || 'Unknown Artist';
-        const title = titleEl.dataset.title || 'Drum Tab';
+        const title = titleEl.dataset.title || 'Chord Chart';
 
         pdf.setProperties({
             title: title,
             author: artist,
-            subject: 'Drum Tab',
-            keywords: 'Drums, Drum Tab, Songsterr',
-            creator: 'SongsterrDrumTabDownloader'
+            subject: 'Chord Chart',
+            keywords: 'Chords, Guitar, Songsterr',
+            creator: 'SongsterrGuitarChordDownloader'
         });
 
         pdf.save(`${artist} - ${title}.pdf`);
@@ -1006,11 +1006,11 @@ async function generateGhostPDF(xmlString, artist, title) {
         }
 
         pdf.setProperties({
-            title: title || 'Drum Tab',
+            title: title || 'Chord Chart',
             author: artist || 'Unknown Artist',
-            subject: 'Drum Tab',
-            keywords: 'Drums, Drum Tab, Songsterr',
-            creator: 'SongsterrDrumTabDownloader'
+            subject: 'Chord Chart',
+            keywords: 'Chords, Guitar, Songsterr',
+            creator: 'SongsterrGuitarChordDownloader'
         });
 
         pdf.save(`${artist} - ${title}.pdf`);
